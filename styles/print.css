@@ -27,6 +27,13 @@
 .proj b{font-size:7.5px;font-weight:700;letter-spacing:.28em;color:var(--grey);}
 .proj span{font-family:'Archivo';font-weight:700;font-size:calc(12px * var(--fs));color:var(--ink);}
 .proj .fraco{color:#C9C2DA;}
+/* Logo do cliente: discreta, ao lado do nome. A identidade do documento
+   continua sendo a B7, no cabeçalho e no rodapé. Sem efeito, sem corte. */
+.cli-com-logo{display:flex;align-items:center;gap:7px;min-width:0;}
+.cli-com-logo img{height:calc(7mm * var(--fs));max-width:calc(22mm * var(--fs));
+  object-fit:contain;flex:none;}
+.cli-com-logo span{font-family:'Archivo';font-weight:700;font-size:calc(12px * var(--fs));
+  color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 
 .titulo-bloco{display:flex;gap:calc(28px * var(--fs));align-items:flex-start;margin-top:calc(9mm * var(--fs));}
 .numero{font-family:'Archivo';font-weight:900;font-size:calc(96px * var(--fs));line-height:.76;

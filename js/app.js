@@ -32,8 +32,11 @@ B7.Rota = (function () {
     }
     if (partes[0] === 'gravacao' && partes[1]) {
       mostrar('tela-editor');
+      document.querySelectorAll('.nav a').forEach(a =>
+        a.classList.toggle('on', a.dataset.ir === '#/gravacoes'));
       document.body.dataset.aba = document.body.dataset.aba || 'editor';
       await B7.Editor.abrir(partes[1], params.get('roteiro'));
+      if (params.get('imprimir')) setTimeout(() => B7.Editor.imprimir(), 350);
       return;
     }
     if (partes[0] === 'cliente' && partes[1]) {
@@ -41,6 +44,9 @@ B7.Rota = (function () {
       await B7.Dashboard.abrirCliente(partes[1]);
       return;
     }
+    if (partes[0] === 'clientes')  { mostrar('tela-dashboard'); return B7.Dashboard.abrirClientes(); }
+    if (partes[0] === 'gravacoes') { mostrar('tela-dashboard'); return B7.Dashboard.abrirGravacoes(); }
+    if (partes[0] === 'roteiros')  { mostrar('tela-dashboard'); return B7.Dashboard.abrirRoteiros(); }
     mostrar('tela-dashboard');
     await B7.Dashboard.abrir();
   }
@@ -87,7 +93,6 @@ B7.Rota = (function () {
     document.getElementById('bt-nova-gravacao').onclick = () => B7.Dashboard.modalNovaGravacao();
     document.getElementById('mn-novo-cliente').onclick = () => B7.Dashboard.modalNovoCliente();
     document.getElementById('mn-paleta').onclick = () => B7.UI.paleta();
-    document.getElementById('mn-paleta').onclick = () => B7.Dashboard.paleta();
     document.getElementById('mn-exportar').onclick = () => B7.Backup.exportar();
     document.getElementById('mn-importar').onclick = () => B7.Backup.importar();
 
@@ -97,6 +102,7 @@ B7.Rota = (function () {
     document.getElementById('bt-imprimir').onclick = () => B7.Editor.imprimir();
     document.getElementById('mn-ed-dados').onclick = () => B7.Editor.editarGravacao();
     document.getElementById('mn-ed-foco').onclick = () => B7.Editor.modoFoco();
+    document.getElementById('bt-foco').onclick = () => B7.Editor.modoFoco();
     document.getElementById('mn-ed-novo').onclick = () => B7.Editor.novoRoteiro();
     document.getElementById('mn-ed-exportar').onclick = () => B7.Backup.exportar();
     document.getElementById('mn-ed-excluir').onclick = () =>
@@ -115,6 +121,38 @@ B7.Rota = (function () {
       B7.Editor.aplicarZoom();
     });
 
+    /* ---- sidebar ---- */
+    document.querySelectorAll('.nav a[data-ir]').forEach(a => a.onclick = () => {
+      location.hash = a.dataset.ir;
+      document.body.classList.remove('gaveta');
+    });
+    document.getElementById('nav-backup').onclick = () => B7.Backup.menu();
+    document.getElementById('nav-atalhos').onclick = () => B7.UI.atalhos();
+    document.getElementById('bt-recolher').onclick = () => {
+      const r = document.body.classList.toggle('recolhida');
+      B7.pref.gravar('sidebar_recolhida', r);
+      if (document.getElementById('tela-editor').classList.contains('ativa')) B7.Editor.aplicarZoom();
+    };
+    const abre = document.getElementById('abre-menu');
+    if (abre) abre.onclick = e => { e.stopPropagation(); document.body.classList.toggle('gaveta'); };
+    document.addEventListener('click', e => {
+      if (document.body.classList.contains('gaveta') && !e.target.closest('.lateral'))
+        document.body.classList.remove('gaveta');
+    });
+    if (B7.pref.ler('sidebar_recolhida', false)) document.body.classList.add('recolhida');
+
+    /* estado do banco na sidebar, junto com o autosave */
+    const pintarEstado = () => {
+      const el = document.getElementById('estado-banco');
+      if (!el) return;
+      const off = !navigator.onLine;
+      el.className = 'estado' + (off ? ' off' : '');
+      el.querySelector('span:last-child').textContent = off ? 'Sem conexão' : 'Banco conectado';
+    };
+    window.addEventListener('online', pintarEstado);
+    window.addEventListener('offline', pintarEstado);
+    pintarEstado();
+
     /* ---- preferências locais ---- */
     if (B7.pref.ler('foco', false)) document.body.classList.add('foco');
 
@@ -128,7 +166,7 @@ B7.Rota = (function () {
         e.preventDefault(); B7.Editor.imprimir();
       }
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault(); B7.Dashboard.paleta();
+        e.preventDefault(); B7.UI.paleta();
       }
       if (e.key === '/' && !digitando &&
           document.getElementById('tela-dashboard').classList.contains('ativa')) {

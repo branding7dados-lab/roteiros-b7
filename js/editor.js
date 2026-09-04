@@ -56,14 +56,14 @@ B7.Editor = (function () {
     document.getElementById('ed-gravacao').textContent =
       g.nome + (g.data_gravacao ? ' · ' + B7.UI.dataBR(g.data_gravacao) : '');
     const bt = document.getElementById('ed-status');
-    bt.innerHTML = B7.UI.badgeStatus(g.status);
+    bt.innerHTML = B7.UI.chipStatus(g.status);
   }
 
   function menuStatus() {
     const m = B7.UI.modal('<h3>Status da gravação</h3><div class="sub">Aparece no dashboard e na lista do cliente.</div>' +
       ['Rascunho', 'Pronto para gravar', 'Gravado'].map(s =>
         '<button class="b" style="width:100%;justify-content:flex-start;margin-bottom:8px" data-s="' + s + '">' +
-        B7.UI.badgeStatus(s) + '</button>').join('') +
+        B7.UI.chipStatus(s) + '</button>').join('') +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>');
     m.querySelectorAll('[data-s]').forEach(b => b.onclick = async () => {
       const s = b.dataset.s;
@@ -488,6 +488,7 @@ B7.Editor = (function () {
 
     cx.innerHTML = B7.Folha.folhaHTML({
       cliente: E.gravacao.cliente_nome,
+      clienteLogo: E.gravacao.cliente_logo_url || null,
       gravacao: E.gravacao.nome,
       dataGravacao: E.gravacao.data_gravacao ? B7.UI.dataBR(E.gravacao.data_gravacao) : '',
       roteiro: r, cenas: E.cenas[r.id] || [], indice: idx, total: E.roteiros.length
@@ -530,6 +531,7 @@ B7.Editor = (function () {
   function imprimir() {
     B7.Impressao.abrirSelecao({
       cliente: E.gravacao.cliente_nome,
+      clienteLogo: E.gravacao.cliente_logo_url || null,
       gravacao: E.gravacao.nome,
       dataGravacao: E.gravacao.data_gravacao ? B7.UI.dataBR(E.gravacao.data_gravacao) : '',
       roteiros: E.roteiros,

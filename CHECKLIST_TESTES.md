@@ -44,6 +44,27 @@ seu ambiente, está na seção final.
 
 ---
 
+### Verificado depois do redesign visual (v2.0)
+
+- Sidebar navega entre Dashboard, Clientes, Gravações e Roteiros recentes; recolher funciona e fica guardado.
+- Dashboard monta hero, 4 métricas com dados reais, gravação em destaque, cards e clientes em grid.
+- Filtros de clientes (Todos / Mais recentes / Com gravações / Sem gravações) e busca local funcionam.
+- Ctrl+K abre a paleta, busca no banco e navega por teclado; Enter abre o resultado.
+- Ficha A4 preservada, agora com o símbolo colorido no cabeçalho e o lockup branco na abertura.
+- Data ausente continua sumindo por completo do dashboard, do cliente, do editor e da folha impressa.
+- Autosave, duplicação, drag and drop, desfazer, impressão e backup seguem passando nos 8 testes.
+
+### Verificado na entrega de logos de cliente
+
+- Criar cliente com logo: prévia antes de salvar, arquivo no bucket, só a referência na tabela (nada de base64).
+- Criar cliente sem logo: funciona normalmente e usa iniciais (ClimaPro → CP, Mercato Sadia → MS).
+- Validação: arquivo acima de 2 MB e formato não suportado são recusados com toast, sem `alert()`.
+- Editar cliente: renomear mantém o mesmo id, sem perder gravações; trocar logo apaga a antiga do bucket.
+- Remover logo: volta para as iniciais e limpa a referência, sem excluir o cliente.
+- Upload que falha: o modal não fecha, o aviso aparece e a logo anterior é preservada.
+- Excluir cliente: a confirmação mostra quantas gravações e roteiros serão apagados e exige digitar o nome.
+- Ficha A4: logo do cliente aparece discreta ao lado do nome; sem logo, o layout segue sem espaço vazio.
+
 ## O que testar você mesmo depois de publicar
 
 Estes dependem do seu Supabase e da sua rede, então não dá para automatizar aqui.
@@ -67,5 +88,9 @@ Estes dependem do seu Supabase e da sua rede, então não dá para automatizar a
 5. **Instalação como app** — no Chrome, instale pelo ícone na barra de endereços
    e veja se abre em janela própria com o ícone da B7.
 
-6. **Queda de conexão real** — desligue o wi-fi, digite, ligue de novo. O
+6. **Logo de verdade** — suba a logo de um cliente real e confira no dashboard e
+   numa folha impressa. Se a imagem não aparecer, quase sempre é o bucket
+   `client-logos` que não foi criado: rode o `supabase_setup.sql` de novo.
+
+7. **Queda de conexão real** — desligue o wi-fi, digite, ligue de novo. O
    indicador deve avisar e depois sincronizar sozinho.

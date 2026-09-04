@@ -40,6 +40,10 @@ registros e ids. Nada é apagado.
 Deve aparecer "Success". Se aparecer erro, copie a mensagem — ela costuma dizer
 exatamente o que faltou.
 
+O mesmo arquivo cria o bucket `client-logos` no Storage, usado pelas logos dos
+clientes. Se você já tinha rodado uma versão anterior, rode de novo: ele só
+acrescenta o que falta, sem apagar nada.
+
 ### PASSO 4 — Copiar as chaves
 
 No Supabase, vá em **Project Settings → API** (ícone de engrenagem). Você precisa
@@ -110,6 +114,24 @@ computadores da equipe.
 
 ## Como usar no dia a dia
 
+**Clientes com logo** — no cadastro e na edição do cliente existe um campo de
+logo, sempre opcional. Aceita PNG, JPG, WEBP e SVG até 2 MB, com prévia antes de
+salvar e arraste-e-solte. A imagem vai para o Supabase Storage (bucket
+`client-logos`), e na tabela fica só a referência. Cliente sem logo usa o avatar
+de iniciais — nada no sistema depende da logo existir. As logos dos clientes
+nunca são recoloridas, cortadas ou distorcidas; aparecem inteiras sobre uma
+superfície neutra.
+
+**Editar e excluir cliente** — no menu `⋯` do card ou no cabeçalho da página do
+cliente. Trocar o nome não afeta gravações, roteiros e cenas, porque o sistema
+trabalha pelo identificador. Excluir mostra quanto conteúdo será apagado junto e
+pede o nome digitado para confirmar.
+
+**Sidebar** — navegação fixa à esquerda: Dashboard, Clientes, Gravações,
+Roteiros recentes, Importar/Exportar e Atalhos. Dá para recolher no botão do
+rodapé; no celular ela vira gaveta. O rodapé também mostra o estado da conexão
+com o banco.
+
 **Dashboard** — abre direto ao entrar. Mostra o resumo, as gravações mexidas
 recentemente ("Continue de onde parou") e os clientes. A busca do topo procura
 cliente, gravação e título de roteiro ao mesmo tempo.
@@ -121,6 +143,10 @@ não mostra campo de data. O editor abre já com o primeiro roteiro pronto.
 
 **Atalhos** — `Ctrl+K` abre as ações rápidas (nova gravação, novo cliente,
 buscar roteiro e as gravações recentes). A tecla `/` vai direto para a busca.
+
+**Ctrl + K** — abre as ações rápidas: criar gravação, criar cliente, abrir
+gravação recente e buscar cliente/gravação/roteiro no banco, tudo com navegação
+por ↑ ↓ Enter Esc.
 
 **Editor** — três áreas: o trilho numerado à esquerda (arraste para reordenar os
 roteiros), o painel de escrita no meio e a folha A4 à direita, exatamente como
@@ -215,10 +241,18 @@ resolve o susto.
 
 ---
 
+## Identidade visual
+
+As logos oficiais ficam em `assets/brand/` (com os originais intactos em
+`assets/brand/originais/`). Qual versão é usada em cada lugar do sistema,
+as cores e a tipografia estão documentados em **`BRAND.md`**. Regra curta:
+fundo escuro pede a versão branca, fundo claro pede a colorida, e a logo nunca
+é redesenhada nem recebe efeito.
+
 ## Estrutura dos arquivos
 
 ```
-index.html                 a casca do sistema (dashboard + editor)
+index.html                 a casca do sistema (sidebar + dashboard + editor)
 styles/global.css          cores, tipografia, botões, modais, toasts
 styles/dashboard.css       dashboard, busca e área de clientes
 styles/editor.css          trilho, painel de escrita, prévia
@@ -230,10 +264,11 @@ js/database.js             todas as consultas ao banco, em um lugar só
 js/ui.js                   toasts, modais, confirmação, datas
 js/autosave.js             salvamento automático e fila de offline
 js/print.js                desenho da folha A4 e impressão
-js/dashboard.js            tela inicial, clientes, busca
+js/dashboard.js            dashboard, clientes, gravações, busca
 js/editor.js               editor de roteiros e cenas
 js/backup.js               exportar e importar
 js/app.js                  rotas e inicialização
+assets/brand/              logos oficiais (ver BRAND.md)
 supabase_setup.sql         cria o banco (rodar uma vez)
 manifest.json + sw.js      instalação como aplicativo
 .nojekyll                  obrigatório para o GitHub Pages

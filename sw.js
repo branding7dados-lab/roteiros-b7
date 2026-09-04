@@ -6,18 +6,19 @@
    Dados de roteiro nunca passam por aqui: vêm sempre do Supabase.
    ===================================================================== */
 
-const CACHE = 'roteiros-b7-v2';
+const CACHE = 'roteiros-b7-v3';
 const CASCA = [
   './', './index.html',
   './styles/global.css', './styles/dashboard.css', './styles/editor.css', './styles/print.css',
   './js/vendor-supabase.js', './js/supabase.js', './js/database.js', './js/ui.js',
   './js/autosave.js', './js/print.js', './js/dashboard.js', './js/editor.js',
   './js/backup.js', './js/app.js',
-  './assets/logo/b7-logo.png', './assets/logo/b7-mark.png',
+  './assets/brand/logo-color.png', './assets/brand/logo-white.png',
+  './assets/brand/symbol-color.png', './assets/brand/symbol-white.png',
   './assets/fonts/inter-400.woff2', './assets/fonts/inter-500.woff2',
   './assets/fonts/inter-600.woff2', './assets/fonts/inter-700.woff2',
   './assets/fonts/archivo-700.woff2', './assets/fonts/archivo-800.woff2', './assets/fonts/archivo-900.woff2',
-  './assets/icons/icon-192.png', './assets/icons/icon-512.png',
+  './assets/icons/icon-192.png', './assets/icons/icon-512.png', './assets/icons/favicon.png',
   './manifest.json'
 ];
 /* config.js fica de fora de propósito: é o arquivo que você edita e não

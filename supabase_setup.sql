@@ -6,7 +6,8 @@
 --    • banco novo   → cria tudo do zero;
 --    • banco antigo → renomeia "diarias" para "gravacoes" preservando
 --                     todos os ids e registros. Nada é apagado.
---  Pode ser executado mais de uma vez sem quebrar nada.
+--  Pode ser executado mais de uma vez sem quebrar nada. Validado contra
+--  PostgreSQL 16: banco novo, banco antigo com dados e execução repetida.
 --
 --  Estrutura: CLIENTES → GRAVAÇÕES → ROTEIROS → CENAS
 --  Uma gravação é um grupo de roteiros de um cliente. Vários clientes
@@ -58,6 +59,11 @@ create table if not exists public.clientes (
 
 create unique index if not exists clientes_nome_unico
   on public.clientes (lower(btrim(nome)));
+
+-- logo do cliente: opcional. Guardamos só a referência do arquivo, nunca a
+-- imagem. Clientes antigos ficam com NULL e continuam usando as iniciais.
+alter table public.clientes add column if not exists logo_url  text;
+alter table public.clientes add column if not exists logo_path text;
 
 -- ---------------------------------------------------------------------
 -- 2. GRAVAÇÕES
@@ -140,7 +146,6 @@ create trigger clientes_updated_at before update on public.clientes
   for each row execute function public.tocar_updated_at();
 
 drop trigger if exists gravacoes_updated_at on public.gravacoes;
-drop trigger if exists gravacoes_updated_at on public.gravacoes;
 create trigger gravacoes_updated_at before update on public.gravacoes
   for each row execute function public.tocar_updated_at();
 
@@ -166,7 +171,6 @@ begin
 end $$;
 
 drop trigger if exists roteiros_tocam_gravacao on public.roteiros;
-drop trigger if exists roteiros_tocam_gravacao on public.roteiros;
 create trigger roteiros_tocam_gravacao after insert or update or delete on public.roteiros
   for each row execute function public.tocar_gravacao_do_roteiro();
 
@@ -183,13 +187,11 @@ begin
 end $$;
 
 drop trigger if exists cenas_tocam_gravacao on public.cenas;
-drop trigger if exists cenas_tocam_gravacao on public.cenas;
 create trigger cenas_tocam_gravacao after insert or update or delete on public.cenas
   for each row execute function public.tocar_gravacao_da_cena();
 
--- limpeza das funções antigas, se existirem
-drop function if exists public.tocar_gravacao_do_roteiro();
-drop function if exists public.tocar_gravacao_da_cena();
+-- (a limpeza das funções de nome antigo fica no fim do arquivo, depois que
+--  os gatilhos já apontam para as funções novas)
 
 -- ---------------------------------------------------------------------
 -- 7. Visões de apoio
@@ -203,6 +205,7 @@ select
   g.local, g.responsavel, g.videomaker, g.observacoes,
   g.created_at, g.updated_at,
   c.nome as cliente_nome,
+  c.logo_url as cliente_logo_url,
   (select count(*) from public.roteiros r where r.recording_session_id = g.id) as total_roteiros
 from public.gravacoes g
 join public.clientes c on c.id = g.client_id;
@@ -211,7 +214,7 @@ drop view if exists public.clientes_resumo;
 create view public.clientes_resumo
 with (security_invoker = on) as
 select
-  c.id, c.nome, c.observacoes, c.created_at, c.updated_at,
+  c.id, c.nome, c.observacoes, c.logo_url, c.logo_path, c.created_at, c.updated_at,
   (select count(*) from public.gravacoes g where g.client_id = c.id) as total_gravacoes,
   (select count(*) from public.roteiros r
      join public.gravacoes g2 on g2.id = r.recording_session_id
@@ -265,10 +268,40 @@ grant select, insert, update, delete on
 grant select on public.gravacoes_resumo, public.clientes_resumo to anon, authenticated;
 
 -- ---------------------------------------------------------------------
+-- 8B. STORAGE DAS LOGOS DE CLIENTE
+--
+--     Bucket público: as logos aparecem na interface e na folha impressa,
+--     e o sistema não tem login. Mesma lógica já adotada nas tabelas.
+--     A chave usada continua sendo a publishable/anon — service_role
+--     nunca entra no frontend.
+-- ---------------------------------------------------------------------
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values ('client-logos', 'client-logos', true, 2097152,
+        array['image/png','image/jpeg','image/webp','image/svg+xml'])
+on conflict (id) do update
+  set public = true,
+      file_size_limit = 2097152,
+      allowed_mime_types = array['image/png','image/jpeg','image/webp','image/svg+xml'];
+
+drop policy if exists logos_leitura  on storage.objects;
+drop policy if exists logos_escrita  on storage.objects;
+drop policy if exists logos_troca    on storage.objects;
+drop policy if exists logos_remocao  on storage.objects;
+
+create policy logos_leitura on storage.objects
+  for select to anon, authenticated using (bucket_id = 'client-logos');
+create policy logos_escrita on storage.objects
+  for insert to anon, authenticated with check (bucket_id = 'client-logos');
+create policy logos_troca on storage.objects
+  for update to anon, authenticated using (bucket_id = 'client-logos') with check (bucket_id = 'client-logos');
+create policy logos_remocao on storage.objects
+  for delete to anon, authenticated using (bucket_id = 'client-logos');
+
+-- ---------------------------------------------------------------------
 -- 9. Limpeza do vocabulário antigo (não faz nada em banco novo)
 -- ---------------------------------------------------------------------
-drop function if exists public.tocar_diaria_do_roteiro();
-drop function if exists public.tocar_diaria_da_cena();
+drop function if exists public.tocar_diaria_do_roteiro() cascade;
+drop function if exists public.tocar_diaria_da_cena() cascade;
 
 -- =====================================================================
 --  Fim. Se rodou sem erro, o banco está pronto.

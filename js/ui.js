@@ -37,7 +37,7 @@ B7.UI = (function () {
   /* ------------------------------------------------------------ modais */
   function modal(html, opcoes = {}) {
     const fundo = document.createElement('div');
-    fundo.className = 'fundo-modal';
+    fundo.className = 'fundo-modal' + (opcoes.classe ? ' ' + opcoes.classe : '');
     fundo.innerHTML = '<div class="modal' + (opcoes.larga ? ' larga' : '') + '">' + html + '</div>';
     fundo.addEventListener('mousedown', e => { if (e.target === fundo) fechar(); });
     document.addEventListener('keydown', tecla);
@@ -123,16 +123,38 @@ B7.UI = (function () {
     if (seg < 604800) return 'há ' + Math.floor(seg / 86400) + ' dias';
     return d.toLocaleDateString('pt-BR');
   }
+  /* ------------------------------------------------- avatar do cliente
+     Um lugar só decide entre logo e iniciais. Usado no dashboard, na
+     lista de clientes, nas gravações, na busca e na paleta.
+     A logo do cliente nunca é recolorida, cortada ou distorcida. */
+  function avatarCliente(nome, logoUrl, classe) {
+    const cls = 'avatar' + (classe ? ' ' + classe : '');
+    if (logoUrl) {
+      return '<div class="' + cls + ' com-logo"><img src="' + esc(logoUrl) + '" alt="' + esc(nome || '') + '" ' +
+        'onerror="this.parentElement.classList.remove(\'com-logo\');' +
+        'this.parentElement.textContent=this.dataset.ini" data-ini="' + esc(iniciais(nome)) + '"></div>';
+    }
+    return '<div class="' + cls + '">' + esc(iniciais(nome)) + '</div>';
+  }
+
+  /* "Mercato Sadia" → MS · "ClimaPro" → CP · "Águas Mucugê" → ÁM
+     Nome de uma palavra só usa a maiúscula interna quando existe
+     (ClimaPro, AutoEscola); sem ela, cai nas duas primeiras letras. */
   function iniciais(nome) {
-    return (nome || '?').trim().split(/\s+/).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+    const limpo = (nome || '?').trim();
+    if (!limpo) return '?';
+    const partes = limpo.split(/\s+/).filter(Boolean);
+    if (partes.length > 1) return (partes[0][0] + partes[1][0]).toUpperCase();
+    const interna = partes[0].slice(1).match(/[A-ZÀ-Þ0-9]/);
+    return (partes[0][0] + (interna ? interna[0] : (partes[0][1] || ''))).toUpperCase();
   }
   function classeStatus(s) {
     if (s === 'Gravado') return 'gravado';
     if (s === 'Pronto para gravar') return 'pronto';
     return 'rascunho';
   }
-  function badgeStatus(s) {
-    return '<span class="badge-status ' + classeStatus(s) + '">' + esc(s || 'Rascunho') + '</span>';
+  function chipStatus(s) {
+    return '<span class="chip-status ' + classeStatus(s) + '">' + esc(s || 'Rascunho') + '</span>';
   }
   function hojeISO() {
     const d = new Date();
@@ -144,66 +166,137 @@ B7.UI = (function () {
   function autoAltura(t) { t.style.height = 'auto'; t.style.height = (t.scrollHeight + 2) + 'px'; }
 
   /* ------------------------------------------------ paleta de comandos */
-  /* Ctrl+K / Cmd+K: as quatro ações mais usadas sem tirar a mão do teclado. */
+  /* Ctrl+K: ações e busca de cliente, gravação e roteiro no mesmo lugar.
+     Navegação por ↑ ↓ Enter Esc. */
+  const ICP = {
+    mais: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    pessoa: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.4"/><path d="M5 20v-1a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v1"/></svg>',
+    play: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M10 8.5l6 3.5-6 3.5z"/></svg>',
+    grav: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="13" height="12" rx="2.5"/><path d="M15.5 10.5l6-3.5v10l-6-3.5z"/></svg>',
+    rot:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3.5h9l5 5V20a1.5 1.5 0 0 1-1.5 1.5h-12A1.5 1.5 0 0 1 4 20V5a1.5 1.5 0 0 1 1-1.5z"/><path d="M14 3.5V9h5"/></svg>'
+  };
+
   function paleta() {
     const acoes = [
-      { rot: 'Nova gravação',          dica: 'criar uma gravação para um cliente', fn: () => B7.Dashboard.modalNovaGravacao() },
-      { rot: 'Novo cliente',           dica: 'cadastrar um cliente',               fn: () => B7.Dashboard.modalNovoCliente() },
-      { rot: 'Abrir gravação recente', dica: 'últimas gravações editadas',         fn: () => abrirRecente() },
-      { rot: 'Buscar roteiro',         dica: 'procurar por título',                fn: () => irParaBusca() }
+      { ic: ICP.mais,   rot: 'Nova gravação',  dica: 'começar um grupo de roteiros', fn: () => B7.Dashboard.modalNovaGravacao() },
+      { ic: ICP.pessoa, rot: 'Novo cliente',   dica: 'cadastrar um cliente',         fn: () => B7.Dashboard.modalNovoCliente() },
+      { ic: ICP.play,   rot: 'Abrir gravação recente', dica: 'últimas gravações editadas', fn: () => recentes() },
+      { ic: ICP.grav,   rot: 'Ver gravações',  dica: 'todas as gravações',           fn: () => { location.hash = '#/gravacoes'; } }
     ];
-    const m = modal('<h3>O que você quer fazer?</h3>' +
-      '<input class="campo mb" id="cp-filtro" data-foco placeholder="Digite para filtrar…">' +
-      '<div class="corpo" id="cp-lista">' + acoes.map((a, i) =>
-        '<button class="cp-item" data-i="' + i + '"><b>' + esc(a.rot) + '</b><small>' + esc(a.dica) + '</small></button>'
-      ).join('') + '</div>');
 
-    const filtro = m.querySelector('#cp-filtro');
-    const itens = () => [...m.querySelectorAll('.cp-item')].filter(b => b.style.display !== 'none');
-    let foco = 0;
-    const pintar = () => itens().forEach((b, i) => b.classList.toggle('ativo', i === foco));
-    pintar();
+    const m = modal(
+      '<div class="busca-cp"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
+      '<input id="cp-in" data-foco placeholder="Buscar ou executar uma ação…"></div>' +
+      '<div class="cp-lista" id="cp-lista"></div>' +
+      '<div class="cp-pe"><span><kbd>↑↓</kbd>navegar</span><span><kbd>Enter</kbd>abrir</span>' +
+      '<span><kbd>Esc</kbd>fechar</span></div>', { classe: 'paleta' });
 
-    filtro.oninput = () => {
-      const q = filtro.value.toLowerCase();
-      m.querySelectorAll('.cp-item').forEach(b => {
-        b.style.display = b.textContent.toLowerCase().includes(q) ? '' : 'none';
-      });
-      foco = 0; pintar();
-    };
-    filtro.onkeydown = e => {
-      const lista = itens();
-      if (e.key === 'ArrowDown') { e.preventDefault(); foco = Math.min(foco + 1, lista.length - 1); pintar(); }
-      if (e.key === 'ArrowUp')   { e.preventDefault(); foco = Math.max(foco - 1, 0); pintar(); }
-      if (e.key === 'Enter' && lista[foco]) { e.preventDefault(); lista[foco].click(); }
-    };
-    m.querySelectorAll('.cp-item').forEach(b => b.onclick = () => {
+    const entrada = m.querySelector('#cp-in');
+    const lista = m.querySelector('#cp-lista');
+    let itens = [], foco = 0;
+
+    function pintar(html, novosItens) {
+      lista.innerHTML = html;
+      itens = novosItens;
+      foco = 0;
+      marcar();
+      [...lista.querySelectorAll('.cp-item')].forEach((b, i) => b.onclick = () => executar(i));
+    }
+    function marcar() {
+      [...lista.querySelectorAll('.cp-item')].forEach((b, i) => b.classList.toggle('ativo', i === foco));
+      const ativo = lista.querySelector('.cp-item.ativo');
+      if (ativo) ativo.scrollIntoView({ block: 'nearest' });
+    }
+    function executar(i) {
+      const it = itens[i];
+      if (!it) return;
       m.fechar();
-      acoes[+b.dataset.i].fn();
-    });
+      it.fn();
+    }
+    const linha = (ic, titulo, sub) =>
+      '<button class="cp-item"><div class="ic">' + ic + '</div><div><b>' + esc(titulo) +
+      '</b><small>' + esc(sub) + '</small></div></button>';
+
+    function mostrarAcoes(filtro) {
+      const f = (filtro || '').toLowerCase();
+      const lst = acoes.filter(a => !f || (a.rot + ' ' + a.dica).toLowerCase().includes(f));
+      pintar('<div class="cp-grupo">AÇÕES</div>' + lst.map(a => linha(a.ic, a.rot, a.dica)).join(''), lst);
+    }
+    mostrarAcoes('');
+
+    const procurar = debounce(async termo => {
+      if (!termo.trim()) return mostrarAcoes('');
+      const acoesFiltradas = acoes.filter(a => (a.rot + ' ' + a.dica).toLowerCase().includes(termo.toLowerCase()));
+      let html = '', novos = [];
+      if (acoesFiltradas.length) {
+        html += '<div class="cp-grupo">AÇÕES</div>' + acoesFiltradas.map(a => linha(a.ic, a.rot, a.dica)).join('');
+        novos = novos.concat(acoesFiltradas);
+      }
+      try {
+        const r = await B7.DB.buscar(termo);
+        if (r.clientes.length) {
+          html += '<div class="cp-grupo">CLIENTES</div>' + r.clientes.map(c =>
+            linha(c.logo_url ? '<img src="' + esc(c.logo_url) + '" style="width:100%;height:100%;object-fit:contain">'
+                             : '<span>' + esc(iniciais(c.nome)) + '</span>', c.nome,
+              c.total_gravacoes + ' gravaç' + (c.total_gravacoes === 1 ? 'ão' : 'ões'))).join('');
+          novos = novos.concat(r.clientes.map(c => ({ fn: () => { location.hash = '#/cliente/' + c.id; } })));
+        }
+        if (r.gravacoes.length) {
+          html += '<div class="cp-grupo">GRAVAÇÕES</div>' + r.gravacoes.map(g =>
+            linha(ICP.grav, g.nome, g.cliente_nome)).join('');
+          novos = novos.concat(r.gravacoes.map(g => ({ fn: () => { location.hash = '#/gravacao/' + g.id; } })));
+        }
+        if (r.roteiros.length) {
+          html += '<div class="cp-grupo">ROTEIROS</div>' + r.roteiros.map(t =>
+            linha(ICP.rot, t.titulo || 'Sem título', 'abrir na gravação')).join('');
+          novos = novos.concat(r.roteiros.map(t => ({
+            fn: () => { location.hash = '#/gravacao/' + t.recording_session_id + '?roteiro=' + t.id; } })));
+        }
+      } catch (e) { /* sem banco: só as ações */ }
+      pintar(html || '<div class="nada" style="padding:26px;text-align:center;color:var(--ink-3)">Nada encontrado</div>', novos);
+    }, 220);
+
+    entrada.oninput = () => procurar(entrada.value);
+    entrada.onkeydown = e => {
+      if (e.key === 'ArrowDown') { e.preventDefault(); foco = Math.min(foco + 1, itens.length - 1); marcar(); }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); foco = Math.max(foco - 1, 0); marcar(); }
+      if (e.key === 'Enter')     { e.preventDefault(); executar(foco); }
+    };
   }
 
-  async function abrirRecente() {
+  async function recentes() {
     try {
-      const recentes = await B7.DB.gravacoesRecentes(8);
-      if (!recentes.length) return toast('Nenhuma gravação ainda');
-      const m = modal('<h3>Gravações recentes</h3>' +
-        '<div class="corpo">' + recentes.map(g =>
-          '<button class="cp-item" data-id="' + esc(g.id) + '"><b>' + esc(g.nome) + '</b>' +
-          '<small>' + esc(g.cliente_nome) + ' · ' + g.total_roteiros + ' roteiro' +
-          (g.total_roteiros === 1 ? '' : 's') + ' · editado ' + quando(g.updated_at) + '</small></button>'
-        ).join('') + '</div>');
+      const lista = await B7.DB.gravacoesRecentes(8);
+      if (!lista.length) return toast('Nenhuma gravação ainda');
+      const m = modal('<h3>Gravações recentes</h3><div class="sub">Escolha onde continuar.</div>' +
+        '<div class="corpo">' + lista.map(g =>
+          '<button class="cp-item" data-id="' + esc(g.id) + '"><div class="ic">' + ICP.grav + '</div>' +
+          '<div><b>' + esc(g.nome) + '</b><small>' + esc(g.cliente_nome) + ' · ' + g.total_roteiros +
+          ' roteiro' + (g.total_roteiros === 1 ? '' : 's') + ' · editado ' + quando(g.updated_at) +
+          '</small></div></button>').join('') + '</div>' +
+        '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>');
       m.querySelectorAll('.cp-item').forEach(b => b.onclick = () => {
         m.fechar(); location.hash = '#/gravacao/' + b.dataset.id;
       });
     } catch (e) { toast('Não consegui buscar as gravações', { tipo: 'erro' }); }
   }
 
-  function irParaBusca() {
-    location.hash = '#/';
-    setTimeout(() => { const c = document.getElementById('campo-busca'); if (c) c.focus(); }, 120);
+  /* lista de atalhos, para quem quiser trabalhar sem tirar a mão do teclado */
+  function atalhos() {
+    const linha = (t, d) => '<div style="display:flex;align-items:center;gap:12px;padding:10px 2px;' +
+      'border-bottom:1px solid var(--borda)"><kbd style="font-family:inherit;background:var(--suave);' +
+      'border-radius:6px;padding:4px 9px;font-size:12px;font-weight:600;min-width:74px;text-align:center">' +
+      t + '</kbd><span style="font-size:13.5px;color:var(--ink-2)">' + d + '</span></div>';
+    modal('<h3>Atalhos</h3><div class="sub">Funcionam em qualquer tela do sistema.</div>' +
+      '<div class="corpo">' +
+      linha('Ctrl K', 'ações rápidas e busca') +
+      linha('/', 'ir para a busca do topo') +
+      linha('Ctrl S', 'forçar o salvamento agora') +
+      linha('Ctrl P', 'imprimir (dentro do editor)') +
+      linha('Esc', 'fechar janela aberta') +
+      '</div><div class="acoes"><button class="b pri" data-fecha>Entendi</button></div>');
   }
 
-  return { esc, toast, modal, confirmar, ligarMenus, dica, esconderDica, MESES, paleta,
-           dataBR, mesRotulo, quando, iniciais, badgeStatus, classeStatus, hojeISO, debounce, autoAltura };
+  return { atalhos, avatarCliente, esc, toast, modal, confirmar, ligarMenus, dica, esconderDica, MESES, paleta,
+           dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura };
 })();

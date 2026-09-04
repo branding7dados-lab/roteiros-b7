@@ -11,8 +11,11 @@ window.B7 = window.B7 || {};
 
 B7.Folha = (function () {
   const esc = B7.UI.esc;
-  const MARCA = 'assets/logo/b7-mark.png';
-  const LOGO = 'assets/logo/b7-logo.png';
+  /* Marca na impressão — arquivos oficiais, sem redesenho e sem efeito:
+     • ficha (fundo branco)   → símbolo colorido, que imprime com contraste;
+     • abertura (fundo preto) → lockup branco. */
+  const MARCA = 'assets/brand/symbol-color.png';
+  const LOGO  = 'assets/brand/logo-white.png';
 
   const paragrafos = txt => {
     const ls = String(txt || '').split('\n').map(s => s.trim()).filter(Boolean);
@@ -62,8 +65,12 @@ B7.Folha = (function () {
         '<span>B7 &nbsp;/&nbsp; BRANDING7</span></div>' +
         '<div class="dir">ROTEIROS DE GRAVAÇÃO</div></div>' +
       '<div class="proj">' +
-        '<div class="cel"><b>CLIENTE</b><span class="' + (ctx.cliente ? '' : 'fraco') + '">' +
-          esc(ctx.cliente || 'Cliente') + '</span></div>' +
+        '<div class="cel"><b>CLIENTE</b>' +
+          (ctx.clienteLogo
+            ? '<div class="cli-com-logo"><img src="' + esc(ctx.clienteLogo) + '" alt="">' +
+              '<span>' + esc(ctx.cliente || 'Cliente') + '</span></div>'
+            : '<span class="' + (ctx.cliente ? '' : 'fraco') + '">' + esc(ctx.cliente || 'Cliente') + '</span>') +
+        '</div>' +
         '<div class="cel"><b>GRAVAÇÃO</b><span class="' + (ctx.gravacao ? '' : 'fraco') + '">' +
           esc(ctx.gravacao || 'Gravação') + '</span></div>' +
         (ctx.dataGravacao ? '<div class="cel"><b>DATA</b><span>' + esc(ctx.dataGravacao) + '</span></div>' : '') +

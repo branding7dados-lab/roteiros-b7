@@ -33,9 +33,10 @@ B7.DB = (function () {
     async cliente(id) {
       return ok(await sb().from('clientes_resumo').select('*').eq('id', id).single());
     },
-    async criarCliente(nome, observacoes = '') {
-      const linhas = ok(await sb().from('clientes')
-        .insert([{ nome: nome.trim(), observacoes }]).select());
+    async criarCliente(nome, observacoes = '', logo = null) {
+      const dados = { nome: nome.trim(), observacoes };
+      if (logo) { dados.logo_url = logo.url; dados.logo_path = logo.path; }
+      const linhas = ok(await sb().from('clientes').insert([dados]).select());
       return linhas[0];
     },
     async atualizarCliente(id, patch) {
@@ -43,6 +44,26 @@ B7.DB = (function () {
     },
     async excluirCliente(id) {
       return ok(await sb().from('clientes').delete().eq('id', id));
+    },
+
+    /* ------------------------------------- LOGOS (Supabase Storage) */
+    /* A imagem vai para o bucket; na tabela fica só a referência. */
+    async enviarLogo(arquivo, clienteId) {
+      const ext = (arquivo.name.split('.').pop() || 'png').toLowerCase().replace(/[^a-z0-9]/g, '');
+      const limpo = arquivo.name.replace(/\.[^.]+$/, '').replace(/[^\w\-]+/g, '-').slice(0, 40).toLowerCase();
+      /* pasta por cliente + timestamp: sem colisão entre clientes nem entre trocas */
+      const caminho = (clienteId || 'novos') + '/' + Date.now() + '-' + (limpo || 'logo') + '.' + ext;
+      const { error } = await sb().storage.from('client-logos')
+        .upload(caminho, arquivo, { cacheControl: '3600', upsert: false, contentType: arquivo.type });
+      if (error) throw error;
+      const { data } = sb().storage.from('client-logos').getPublicUrl(caminho);
+      return { path: caminho, url: data.publicUrl };
+    },
+
+    async apagarLogo(caminho) {
+      if (!caminho) return;
+      const { error } = await sb().storage.from('client-logos').remove([caminho]);
+      if (error) console.warn('não consegui apagar a logo antiga:', error.message);
     },
 
     /* --------------------------------------------------- GRAVAÇÕES */
@@ -193,11 +214,30 @@ B7.DB = (function () {
       };
       const inicioMes = new Date();
       inicioMes.setDate(1); inicioMes.setHours(0, 0, 0, 0);
-      const [clientes, gravacoes, roteiros, mes] = await Promise.all([
+      const [clientes, gravacoes, roteiros, mes, rascunho, pronto, gravado] = await Promise.all([
         conta('clientes'), conta('gravacoes'), conta('roteiros'),
-        conta('roteiros', q => q.gte('created_at', inicioMes.toISOString()))
+        conta('roteiros', q => q.gte('created_at', inicioMes.toISOString())),
+        conta('gravacoes', q => q.eq('status', 'Rascunho')),
+        conta('gravacoes', q => q.eq('status', 'Pronto para gravar')),
+        conta('gravacoes', q => q.eq('status', 'Gravado'))
       ]);
-      return { clientes, gravacoes, roteiros, mes };
+      /* "em andamento" = tudo que ainda não foi gravado; é o número que
+         interessa na operação, mais do que um total acumulado */
+      return { clientes, gravacoes, roteiros, mes,
+               rascunho, pronto, gravado, andamento: rascunho + pronto };
+    },
+
+    /* roteiros mexidos por último, com a gravação e o cliente de cada um */
+    async roteirosRecentes(limite = 8) {
+      const roteiros = ok(await sb().from('roteiros')
+        .select('id,titulo,recording_session_id,updated_at')
+        .order('updated_at', { ascending: false }).limit(limite));
+      if (!roteiros.length) return [];
+      const ids = [...new Set(roteiros.map(r => r.recording_session_id))];
+      const gravacoes = ok(await sb().from('gravacoes_resumo').select('*').in('id', ids));
+      const porId = {};
+      gravacoes.forEach(g => porId[g.id] = g);
+      return roteiros.map(r => ({ ...r, gravacao: porId[r.recording_session_id] || null }));
     },
 
     /* ------------------------------------------------------ BACKUP */
