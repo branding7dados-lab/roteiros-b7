@@ -49,7 +49,9 @@ B7.Folha = (function () {
       '</div>' + corpo + '</div>';
   }
 
-  /* ctx = { cliente, dataGravacao, roteiro, cenas, indice, total } */
+  /* ctx = { cliente, dataGravacao, gravacao, roteiro, cenas, indice, total }
+     dataGravacao é opcional: sem data, a coluna some da folha em vez de
+     mostrar um campo vazio. */
   function folhaHTML(ctx) {
     const r = ctx.roteiro;
     const cenas = ctx.cenas.map((c, i) => cenaHTML(c, i)).join('<div class="esp"></div>');
@@ -60,10 +62,11 @@ B7.Folha = (function () {
         '<span>B7 &nbsp;/&nbsp; BRANDING7</span></div>' +
         '<div class="dir">ROTEIROS DE GRAVAÇÃO</div></div>' +
       '<div class="proj">' +
-        '<div class="cel"><b>CLIENTE / PROJETO</b><span class="' + (ctx.cliente ? '' : 'fraco') + '">' +
-          esc(ctx.cliente || 'Cliente / projeto') + '</span></div>' +
-        '<div class="cel"><b>DATA DA GRAVAÇÃO</b><span class="' + (ctx.dataGravacao ? '' : 'fraco') + '">' +
-          esc(ctx.dataGravacao || '00/00/0000') + '</span></div>' +
+        '<div class="cel"><b>CLIENTE</b><span class="' + (ctx.cliente ? '' : 'fraco') + '">' +
+          esc(ctx.cliente || 'Cliente') + '</span></div>' +
+        '<div class="cel"><b>GRAVAÇÃO</b><span class="' + (ctx.gravacao ? '' : 'fraco') + '">' +
+          esc(ctx.gravacao || 'Gravação') + '</span></div>' +
+        (ctx.dataGravacao ? '<div class="cel"><b>DATA</b><span>' + esc(ctx.dataGravacao) + '</span></div>' : '') +
         '<div class="cel fim"><b>VÍDEO</b><span>' + num + ' / ' + String(ctx.total).padStart(2, '0') + '</span></div>' +
       '</div>' +
       '<div class="titulo-bloco"><div class="numero">' + num + '</div><div class="titulo-dir">' +
@@ -76,14 +79,23 @@ B7.Folha = (function () {
           esc(r.observacao_gravacao) + '</div></div>') +
       '</div></div>' +
       '<div class="folha-corpo"><div class="esp"></div>' + cenas + '<div class="esp fim"></div></div>' +
-      '<div class="takes"><div class="tk"><span class="bx"></span>TAKE 01</div>' +
-        '<div class="tk"><span class="bx"></span>TAKE 02</div>' +
-        '<div class="tk"><span class="bx"></span>TAKE 03</div><div class="sp"></div>' +
-        '<div class="tk"><span class="bx"></span>APROVADO</div></div>' +
+      takesHTML(ctx.cenas.length) +
       '<div class="folha-pe"><div class="esq">B7 / BRANDING7 &nbsp;·&nbsp; ROTEIROS DE GRAVAÇÃO</div>' +
         '<div class="dir">' + num + '</div></div>' +
       '<div class="aviso-overflow">PASSOU DA PÁGINA — REDUZA A FONTE (A−) OU TIRE UMA CENA</div>' +
     '</div>';
+  }
+
+  /* Uma caixinha por cena, para o videomaker ir marcando o que já gravou.
+     Cresce junto com o roteiro. */
+  function takesHTML(quantas) {
+    const caixas = [];
+    for (let i = 1; i <= quantas; i++) {
+      caixas.push('<div class="tk"><span class="bx"></span>' + String(i).padStart(2, '0') + '</div>');
+    }
+    return '<div class="takes"><div class="tk-rot">CENAS GRAVADAS</div>' +
+      caixas.join('') + '<div class="sp"></div>' +
+      '<div class="tk"><span class="bx"></span>APROVADO</div></div>';
   }
 
   function aberturaHTML(ctx) {
@@ -98,10 +110,10 @@ B7.Folha = (function () {
         '<h1>Roteiros<br>de Gravação</h1>' +
         '<div class="dados">' +
           '<div class="cel"><b>CLIENTE</b><span>' + esc(ctx.cliente || '—') + '</span></div>' +
-          '<div class="cel"><b>DATA</b><span>' + esc(ctx.dataGravacao || '—') + '</span></div>' +
-          '<div class="cel"><b>DIÁRIA</b><span>' + esc(ctx.diaria || '—') + '</span></div>' +
+          '<div class="cel"><b>GRAVAÇÃO</b><span>' + esc(ctx.gravacao || '—') + '</span></div>' +
+          (ctx.dataGravacao ? '<div class="cel"><b>DATA</b><span>' + esc(ctx.dataGravacao) + '</span></div>' : '') +
         '</div>' +
-        '<div class="indice"><div class="rot">ROTEIROS DESTA DIÁRIA</div>' + itens + '</div>' +
+        '<div class="indice"><div class="rot">ROTEIROS DESTA GRAVAÇÃO</div>' + itens + '</div>' +
       '</div></div>';
   }
 
@@ -130,7 +142,7 @@ B7.Folha = (function () {
 B7.Impressao = (function () {
   const esc = B7.UI.esc;
 
-  /* ctx = { cliente, dataGravacao, diaria, roteiros:[], cenasPorRoteiro:{} } */
+  /* ctx = { cliente, dataGravacao, gravacao, roteiros:[], cenasPorRoteiro:{} } */
   function abrirSelecao(ctx) {
     const incluirAbertura = B7.pref.ler('abertura', false);
     const linhas = ctx.roteiros.map((r, i) =>
@@ -144,7 +156,7 @@ B7.Impressao = (function () {
       'deixe as margens em <b>Nenhuma</b> e marque <b>Gráficos de plano de fundo</b>.</div>' +
       '<div class="corpo"><div class="lista-opc">' + linhas + '</div>' +
       '<label class="opc-linha"><input type="checkbox" id="op-abertura"' + (incluirAbertura ? ' checked' : '') + '>' +
-      '<span>Incluir página de abertura <small>(cliente, data, diária e lista de roteiros)</small></span></label></div>' +
+      '<span>Incluir página de abertura <small>(cliente, gravação, data e lista de roteiros)</small></span></label></div>' +
       '<div class="acoes"><button class="b" data-todos>Marcar todos</button>' +
       '<button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok data-foco>Gerar impressão</button></div>', { larga: true });
@@ -171,12 +183,12 @@ B7.Impressao = (function () {
     if (comAbertura) {
       html += B7.Folha.aberturaHTML({
         cliente: ctx.cliente, dataGravacao: ctx.dataGravacao,
-        diaria: ctx.diaria, roteiros: selecionados
+        gravacao: ctx.gravacao, roteiros: selecionados
       });
     }
     selecionados.forEach((r, i) => {
       html += B7.Folha.folhaHTML({
-        cliente: ctx.cliente, dataGravacao: ctx.dataGravacao,
+        cliente: ctx.cliente, dataGravacao: ctx.dataGravacao, gravacao: ctx.gravacao,
         roteiro: r, cenas: ctx.cenasPorRoteiro[r.id] || [],
         indice: ctx.roteiros.indexOf(r), total: ctx.roteiros.length
       });

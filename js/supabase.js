@@ -6,15 +6,31 @@ window.B7 = window.B7 || {};
 
 (function () {
   const cfg = window.B7_CONFIG || {};
-  const faltando = !cfg.SUPABASE_URL || !cfg.SUPABASE_PUBLISHABLE_KEY ||
-                   cfg.SUPABASE_URL === 'COLE_AQUI' ||
-                   cfg.SUPABASE_PUBLISHABLE_KEY === 'COLE_AQUI';
 
-  B7.configurado = !faltando;
+  /* Arruma os enganos comuns ao colar a URL: espaço sobrando, barra no
+     final (vira // na chamada e o Supabase responde "Invalid path
+     specified in request URL") e caminhos colados por engano. */
+  function limparURL(bruta) {
+    let u = String(bruta || '').trim();
+    u = u.replace(/\/+$/, '');                       // tira barras do fim
+    u = u.replace(/\/(rest|auth|storage)(\/v\d+)?$/i, '');  // tira caminho da API
+    return u;
+  }
+
+  const url = limparURL(cfg.SUPABASE_URL);
+  const chave = String(cfg.SUPABASE_PUBLISHABLE_KEY || '').trim();
+
+  const faltando = !url || !chave || url === 'COLE_AQUI' || chave === 'COLE_AQUI';
+
+  /* URL do painel no lugar da URL do projeto é o outro engano frequente */
+  const urlDoPainel = /supabase\.com\/(dashboard|project)/i.test(url);
+
+  B7.configurado = !faltando && !urlDoPainel;
   B7.sb = null;
+  B7.motivoConfig = faltando ? 'faltando' : (urlDoPainel ? 'painel' : null);
 
-  if (!faltando && window.supabase && window.supabase.createClient) {
-    B7.sb = window.supabase.createClient(cfg.SUPABASE_URL, cfg.SUPABASE_PUBLISHABLE_KEY, {
+  if (B7.configurado && window.supabase && window.supabase.createClient) {
+    B7.sb = window.supabase.createClient(url, chave, {
       auth: { persistSession: false, autoRefreshToken: false }
     });
   }

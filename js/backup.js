@@ -59,7 +59,7 @@ B7.Backup = (function () {
           aoConfirmar: async () => {
             try {
               const r = await B7.Save.acao(() => B7.DB.importarTudo(pacote));
-              B7.UI.toast('Importado: ' + r.clientes + ' clientes, ' + r.diarias + ' diárias, ' +
+              B7.UI.toast('Importado: ' + r.clientes + ' clientes, ' + r.gravacoes + ' gravações, ' +
                           r.roteiros + ' roteiros, ' + r.cenas + ' cenas');
               B7.Rota.recarregar();
             } catch (e) {}

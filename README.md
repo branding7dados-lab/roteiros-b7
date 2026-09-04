@@ -1,7 +1,9 @@
 # Sistema de Roteiros B7
 
 Ferramenta interna da B7 / Branding7 para escrever, organizar e imprimir roteiros
-de gravação. Os dados ficam num banco central (Supabase), então qualquer
+de gravação. A organização é **cliente → gravação → roteiros → cenas**: uma
+gravação é um grupo de roteiros de um cliente, e vários clientes podem ter
+gravações no mesmo dia sem nenhum conflito. Os dados ficam num banco central (Supabase), então qualquer
 computador da equipe abre o mesmo endereço e encontra tudo como foi deixado.
 
 **Como funciona por dentro, em uma frase:** o GitHub Pages hospeda a interface, o
@@ -26,10 +28,14 @@ Você não precisa saber programar. Siga na ordem.
 
 No menu lateral do Supabase, clique em **SQL Editor** e depois em **New query**.
 
-### PASSO 3 — Criar as tabelas
+### PASSO 3 — Criar (ou atualizar) as tabelas
 
 Abra o arquivo `supabase_setup.sql` deste projeto, copie **todo** o conteúdo,
 cole na janela do SQL Editor e clique em **Run**.
+
+Se você já tinha rodado a versão anterior (que criava a tabela `gravacoes`), pode
+rodar este arquivo tranquilo: ele renomeia para `gravacoes` preservando todos os
+registros e ids. Nada é apagado.
 
 Deve aparecer "Success". Se aparecer erro, copie a mensagem — ela costuma dizer
 exatamente o que faltou.
@@ -97,19 +103,24 @@ Vai ficar assim:
 https://branding7.github.io/roteiros-b7/
 ```
 
-Abra, crie uma diária e comece. Salve esse link nos favoritos de todos os
+Abra, crie uma gravação e comece. Salve esse link nos favoritos de todos os
 computadores da equipe.
 
 ---
 
 ## Como usar no dia a dia
 
-**Dashboard** — abre direto ao entrar. Mostra o resumo, as diárias mexidas
+**Dashboard** — abre direto ao entrar. Mostra o resumo, as gravações mexidas
 recentemente ("Continue de onde parou") e os clientes. A busca do topo procura
-cliente, diária e título de roteiro ao mesmo tempo (atalho: tecla `/`).
+cliente, gravação e título de roteiro ao mesmo tempo.
 
-**Criar uma gravação** — botão **Nova diária**: escolhe o cliente (ou cria um na
-hora), a data e o nome. O editor abre já com o primeiro roteiro pronto.
+**Criar uma gravação** — botão **Nova gravação**: escolhe o cliente (ou cria um
+na hora) e dá um nome livre ("Conteúdos Setembro", "Campanha Cashback",
+"Institucionais"). A data é opcional — sem data, a folha impressa simplesmente
+não mostra campo de data. O editor abre já com o primeiro roteiro pronto.
+
+**Atalhos** — `Ctrl+K` abre as ações rápidas (nova gravação, novo cliente,
+buscar roteiro e as gravações recentes). A tecla `/` vai direto para a busca.
 
 **Editor** — três áreas: o trilho numerado à esquerda (arraste para reordenar os
 roteiros), o painel de escrita no meio e a folha A4 à direita, exatamente como
@@ -136,7 +147,7 @@ deixe **Margens: Nenhuma** e marque **Gráficos de plano de fundo**, senão o
 gradiente do gancho sai branco. Cada roteiro ocupa uma folha A4.
 
 **Status** — Rascunho, Pronto para gravar ou Gravado. Clique no badge ao lado do
-nome da diária para trocar. Aparece no dashboard e na lista do cliente.
+nome da gravação para trocar. Aparece no dashboard e na lista do cliente.
 
 **Modo foco** — no menu `⋯` do editor. Esconde o trilho e alarga a área de
 escrita.
@@ -194,7 +205,7 @@ o `using (true)` das políticas no `supabase_setup.sql` por uma regra baseada em
 ## Backup
 
 Mesmo com o banco na nuvem, o menu `⋯` tem **Exportar backup** — gera um `.json`
-com clientes, diárias, roteiros e cenas. Guarde no Drive de vez em quando.
+com clientes, gravações, roteiros e cenas. Guarde no Drive de vez em quando.
 **Importar backup** devolve tudo para o banco (registros com o mesmo id são
 sobrescritos pela versão do arquivo; nada é apagado).
 
@@ -228,7 +239,7 @@ manifest.json + sw.js      instalação como aplicativo
 .nojekyll                  obrigatório para o GitHub Pages
 ```
 
-O banco tem quatro tabelas encadeadas: **clientes → diárias → roteiros → cenas**.
+O banco tem quatro tabelas encadeadas: **clientes → gravacoes → roteiros → cenas**.
 Apagar um cliente apaga o que está abaixo dele, em cascata.
 
 ---

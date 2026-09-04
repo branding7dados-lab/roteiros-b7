@@ -143,6 +143,67 @@ B7.UI = (function () {
   }
   function autoAltura(t) { t.style.height = 'auto'; t.style.height = (t.scrollHeight + 2) + 'px'; }
 
-  return { esc, toast, modal, confirmar, ligarMenus, dica, esconderDica, MESES,
+  /* ------------------------------------------------ paleta de comandos */
+  /* Ctrl+K / Cmd+K: as quatro ações mais usadas sem tirar a mão do teclado. */
+  function paleta() {
+    const acoes = [
+      { rot: 'Nova gravação',          dica: 'criar uma gravação para um cliente', fn: () => B7.Dashboard.modalNovaGravacao() },
+      { rot: 'Novo cliente',           dica: 'cadastrar um cliente',               fn: () => B7.Dashboard.modalNovoCliente() },
+      { rot: 'Abrir gravação recente', dica: 'últimas gravações editadas',         fn: () => abrirRecente() },
+      { rot: 'Buscar roteiro',         dica: 'procurar por título',                fn: () => irParaBusca() }
+    ];
+    const m = modal('<h3>O que você quer fazer?</h3>' +
+      '<input class="campo mb" id="cp-filtro" data-foco placeholder="Digite para filtrar…">' +
+      '<div class="corpo" id="cp-lista">' + acoes.map((a, i) =>
+        '<button class="cp-item" data-i="' + i + '"><b>' + esc(a.rot) + '</b><small>' + esc(a.dica) + '</small></button>'
+      ).join('') + '</div>');
+
+    const filtro = m.querySelector('#cp-filtro');
+    const itens = () => [...m.querySelectorAll('.cp-item')].filter(b => b.style.display !== 'none');
+    let foco = 0;
+    const pintar = () => itens().forEach((b, i) => b.classList.toggle('ativo', i === foco));
+    pintar();
+
+    filtro.oninput = () => {
+      const q = filtro.value.toLowerCase();
+      m.querySelectorAll('.cp-item').forEach(b => {
+        b.style.display = b.textContent.toLowerCase().includes(q) ? '' : 'none';
+      });
+      foco = 0; pintar();
+    };
+    filtro.onkeydown = e => {
+      const lista = itens();
+      if (e.key === 'ArrowDown') { e.preventDefault(); foco = Math.min(foco + 1, lista.length - 1); pintar(); }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); foco = Math.max(foco - 1, 0); pintar(); }
+      if (e.key === 'Enter' && lista[foco]) { e.preventDefault(); lista[foco].click(); }
+    };
+    m.querySelectorAll('.cp-item').forEach(b => b.onclick = () => {
+      m.fechar();
+      acoes[+b.dataset.i].fn();
+    });
+  }
+
+  async function abrirRecente() {
+    try {
+      const recentes = await B7.DB.gravacoesRecentes(8);
+      if (!recentes.length) return toast('Nenhuma gravação ainda');
+      const m = modal('<h3>Gravações recentes</h3>' +
+        '<div class="corpo">' + recentes.map(g =>
+          '<button class="cp-item" data-id="' + esc(g.id) + '"><b>' + esc(g.nome) + '</b>' +
+          '<small>' + esc(g.cliente_nome) + ' · ' + g.total_roteiros + ' roteiro' +
+          (g.total_roteiros === 1 ? '' : 's') + ' · editado ' + quando(g.updated_at) + '</small></button>'
+        ).join('') + '</div>');
+      m.querySelectorAll('.cp-item').forEach(b => b.onclick = () => {
+        m.fechar(); location.hash = '#/gravacao/' + b.dataset.id;
+      });
+    } catch (e) { toast('Não consegui buscar as gravações', { tipo: 'erro' }); }
+  }
+
+  function irParaBusca() {
+    location.hash = '#/';
+    setTimeout(() => { const c = document.getElementById('campo-busca'); if (c) c.focus(); }, 120);
+  }
+
+  return { esc, toast, modal, confirmar, ligarMenus, dica, esconderDica, MESES, paleta,
            dataBR, mesRotulo, quando, iniciais, badgeStatus, classeStatus, hojeISO, debounce, autoAltura };
 })();

@@ -1,8 +1,8 @@
 /* =====================================================================
    BOOT + ROTAS
    #/                 → dashboard
-   #/cliente/<id>     → diárias daquele cliente
-   #/diaria/<id>      → editor  (?roteiro=<id> abre num roteiro específico)
+   #/cliente/<id>     → gravações daquele cliente
+   #/gravacao/<id>    → editor  (?roteiro=<id> abre num roteiro específico)
    ===================================================================== */
 
 window.B7 = window.B7 || {};
@@ -24,7 +24,13 @@ B7.Rota = (function () {
 
     B7.UI.esconderDica();
 
+    /* #/diaria/ era o endereço da versão anterior; redireciona para não
+       quebrar links que alguém já tenha guardado */
     if (partes[0] === 'diaria' && partes[1]) {
+      location.replace('#/gravacao/' + partes[1] + (query ? '?' + query : ''));
+      return;
+    }
+    if (partes[0] === 'gravacao' && partes[1]) {
       mostrar('tela-editor');
       document.body.dataset.aba = document.body.dataset.aba || 'editor';
       await B7.Editor.abrir(partes[1], params.get('roteiro'));
@@ -41,7 +47,7 @@ B7.Rota = (function () {
 
   function recarregar() {
     const h = location.hash;
-    if (h.startsWith('#/diaria/')) location.hash = '#/';
+    if (h.startsWith('#/gravacao/')) location.hash = '#/';
     else ir();
   }
 
@@ -60,6 +66,12 @@ B7.Rota = (function () {
 
     /* ---- configuração ausente: explica em vez de quebrar ---- */
     if (!B7.configurado || !B7.sb) {
+      if (B7.motivoConfig === 'painel') {
+        document.querySelector('#setup h2').textContent = 'URL errada no config.js';
+        document.querySelector('#setup p').innerHTML =
+          'O endereço em <code>js/config.js</code> é o do painel do Supabase, não o do projeto. ' +
+          'O certo termina em <b>.supabase.co</b> e está em Project Settings → API → Project URL:';
+      }
       document.getElementById('setup').classList.add('ativo');
       return;
     }
@@ -72,8 +84,10 @@ B7.Rota = (function () {
     document.addEventListener('click', e => {
       if (!e.target.closest('.busca-topo')) caixaRes.classList.remove('aberto');
     });
-    document.getElementById('bt-nova-diaria').onclick = () => B7.Dashboard.modalNovaDiaria();
+    document.getElementById('bt-nova-gravacao').onclick = () => B7.Dashboard.modalNovaGravacao();
     document.getElementById('mn-novo-cliente').onclick = () => B7.Dashboard.modalNovoCliente();
+    document.getElementById('mn-paleta').onclick = () => B7.UI.paleta();
+    document.getElementById('mn-paleta').onclick = () => B7.Dashboard.paleta();
     document.getElementById('mn-exportar').onclick = () => B7.Backup.exportar();
     document.getElementById('mn-importar').onclick = () => B7.Backup.importar();
 
@@ -81,12 +95,12 @@ B7.Rota = (function () {
     document.getElementById('bt-voltar').onclick = () => { location.hash = '#/'; };
     document.getElementById('ed-status').onclick = () => B7.Editor.menuStatus();
     document.getElementById('bt-imprimir').onclick = () => B7.Editor.imprimir();
-    document.getElementById('mn-ed-dados').onclick = () => B7.Editor.editarDiaria();
+    document.getElementById('mn-ed-dados').onclick = () => B7.Editor.editarGravacao();
     document.getElementById('mn-ed-foco').onclick = () => B7.Editor.modoFoco();
     document.getElementById('mn-ed-novo').onclick = () => B7.Editor.novoRoteiro();
     document.getElementById('mn-ed-exportar').onclick = () => B7.Backup.exportar();
     document.getElementById('mn-ed-excluir').onclick = () =>
-      B7.Dashboard.excluirDiaria(B7.Editor.estado.diaria.id);
+      B7.Dashboard.excluirGravacao(B7.Editor.estado.gravacao.id);
 
     /* ---- zoom ---- */
     document.getElementById('zoom-menos').onclick = () => B7.Editor.zoom(-0.08);
@@ -108,9 +122,13 @@ B7.Rota = (function () {
     document.addEventListener('keydown', e => {
       const digitando = /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
       if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); B7.Save.agora(); }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); B7.UI.paleta(); }
       if ((e.ctrlKey || e.metaKey) && e.key === 'p' &&
           document.getElementById('tela-editor').classList.contains('ativa')) {
         e.preventDefault(); B7.Editor.imprimir();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault(); B7.Dashboard.paleta();
       }
       if (e.key === '/' && !digitando &&
           document.getElementById('tela-dashboard').classList.contains('ativa')) {

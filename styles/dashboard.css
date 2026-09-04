@@ -41,22 +41,22 @@
 .metrica small{display:block;font-size:11px;font-weight:600;letter-spacing:.12em;color:#A79FBD;margin-top:5px;}
 .metrica.destaque b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
 
-/* cards de diária */
+/* cards de gravação */
 .grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:12px;}
-.card-diaria{background:var(--card);border-radius:var(--r-lg);padding:16px;box-shadow:var(--sh-1);
+.card-gravacao{background:var(--card);border-radius:var(--r-lg);padding:16px;box-shadow:var(--sh-1);
   cursor:pointer;transition:var(--t);position:relative;overflow:hidden;}
-.card-diaria:hover{box-shadow:var(--sh-2);transform:translateY(-2px);}
-.card-diaria:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--grad);
+.card-gravacao:hover{box-shadow:var(--sh-2);transform:translateY(-2px);}
+.card-gravacao:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--grad);
   opacity:0;transition:var(--t);}
-.card-diaria:hover:before{opacity:1;}
-.card-diaria .cli{font-size:10.5px;font-weight:700;letter-spacing:.16em;color:var(--purple);
+.card-gravacao:hover:before{opacity:1;}
+.card-gravacao .cli{font-size:10.5px;font-weight:700;letter-spacing:.16em;color:var(--purple);
   text-transform:uppercase;margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.card-diaria h3{font-family:'Archivo';font-size:15.5px;font-weight:800;letter-spacing:-.01em;line-height:1.25;
+.card-gravacao h3{font-family:'Archivo';font-size:15.5px;font-weight:800;letter-spacing:-.01em;line-height:1.25;
   margin-bottom:10px;}
-.card-diaria .meta{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--grey);margin-bottom:12px;}
-.card-diaria .meta .p{width:3px;height:3px;border-radius:50%;background:#CFC7E0;}
-.card-diaria .rodape{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.card-diaria .quando{font-size:11px;color:#AEA6C4;}
+.card-gravacao .meta{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--grey);margin-bottom:12px;}
+.card-gravacao .meta .p{width:3px;height:3px;border-radius:50%;background:#CFC7E0;}
+.card-gravacao .rodape{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.card-gravacao .quando{font-size:11px;color:#AEA6C4;}
 
 /* clientes */
 .lista-clientes{display:flex;flex-direction:column;gap:9px;}
@@ -70,7 +70,7 @@
 .card-cliente .nm small{font-size:12px;color:var(--grey);}
 .card-cliente .seta{color:#C6BEDA;font-size:18px;}
 
-/* detalhe do cliente: diárias por mês */
+/* detalhe do cliente: lista de gravações */
 .voltar{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--grey);
   padding:8px 12px 8px 8px;border-radius:9px;margin-bottom:16px;transition:var(--t);}
 .voltar:hover{background:var(--soft);color:var(--magenta);}
@@ -80,14 +80,12 @@
 .cabeca-cliente small{font-size:13px;color:var(--grey);}
 .mes-rot{font-family:'Archivo';font-size:11px;font-weight:800;letter-spacing:.2em;color:var(--violet);
   text-transform:uppercase;margin:22px 0 11px;}
-.linha-diaria{display:flex;align-items:center;gap:14px;background:var(--card);border-radius:var(--r);
+.linha-gravacao{display:flex;align-items:center;gap:14px;background:var(--card);border-radius:var(--r);
   padding:13px 15px;box-shadow:var(--sh-1);margin-bottom:8px;cursor:pointer;transition:var(--t);}
-.linha-diaria:hover{box-shadow:var(--sh-2);transform:translateX(3px);}
-.linha-diaria .dia{font-family:'Archivo';font-size:15px;font-weight:800;color:var(--magenta);
-  min-width:52px;flex:none;}
-.linha-diaria .nm{flex:1;min-width:0;}
-.linha-diaria .nm b{display:block;font-size:14px;font-weight:600;}
-.linha-diaria .nm small{font-size:12px;color:var(--grey);}
+.linha-gravacao:hover{box-shadow:var(--sh-2);transform:translateX(3px);}
+.linha-gravacao .nm{flex:1;min-width:0;}
+.linha-gravacao .nm b{display:block;font-size:14px;font-weight:600;}
+.linha-gravacao .nm small{font-size:12px;color:var(--grey);}
 
 @media (max-width:1000px){ .resumo{grid-template-columns:repeat(2,1fr);} }
 @media (max-width:620px){ .conteudo{padding:20px 14px 80px;} .grade{grid-template-columns:1fr;} }

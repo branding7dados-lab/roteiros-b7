@@ -68,7 +68,7 @@ B7.Save = (function () {
   async function gravarDireto(tabela, id, patch) {
     if (tabela === 'roteiros') return B7.DB.atualizarRoteiro(id, patch);
     if (tabela === 'cenas') return B7.DB.atualizarCena(id, patch);
-    if (tabela === 'diarias') return B7.DB.atualizarDiaria(id, patch);
+    if (tabela === 'gravacoes') return B7.DB.atualizarGravacao(id, patch);
     if (tabela === 'clientes') return B7.DB.atualizarCliente(id, patch);
     throw new Error('Tabela desconhecida: ' + tabela);
   }

@@ -26,15 +26,15 @@
 
       <div class="busca-topo">
         <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-        <input id="campo-busca" placeholder="Buscar cliente, diária ou roteiro…" autocomplete="off">
+        <input id="campo-busca" placeholder="Buscar cliente, gravação ou roteiro…" autocomplete="off">
         <div class="resultados" id="resultados-busca"></div>
       </div>
 
       <div class="espaco"></div>
       <div class="salvamento" id="indicador-salvamento"><span class="pt"></span><span class="txt">Pronto</span></div>
 
-      <button class="bt pri" id="bt-nova-diaria">
-        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="txt">Nova diária</span>
+      <button class="bt pri" id="bt-nova-gravacao">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg><span class="txt">Nova gravação</span>
       </button>
 
       <div class="menu">
@@ -43,6 +43,8 @@
         </button>
         <div class="lista">
           <button id="mn-novo-cliente">Novo cliente</button>
+          <button id="mn-paleta">Ações rápidas <span style="margin-left:auto;font-size:11px;color:#B5AECA">Ctrl K</span></button>
+          <button id="mn-paleta">Ações rápidas · Ctrl+K</button>
           <hr>
           <div class="rot">BACKUP</div>
           <button id="mn-exportar">Exportar backup (.json)</button>
@@ -61,7 +63,7 @@
         <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span class="txt">Dashboard</span>
       </button>
       <div class="risco"></div>
-      <div class="contexto"><b id="ed-cliente">—</b><small id="ed-diaria">—</small></div>
+      <div class="contexto"><b id="ed-cliente">—</b><small id="ed-gravacao">—</small></div>
       <button class="bt" id="ed-status" title="Alterar status"></button>
 
       <div class="espaco"></div>
@@ -77,12 +79,12 @@
         </button>
         <div class="lista">
           <button id="mn-ed-novo">Novo roteiro</button>
-          <button id="mn-ed-dados">Dados da diária</button>
+          <button id="mn-ed-dados">Dados da gravação</button>
           <button id="mn-ed-foco">Modo foco</button>
           <hr>
           <button id="mn-ed-exportar">Exportar backup (.json)</button>
           <hr>
-          <button class="perigo" id="mn-ed-excluir">Excluir diária</button>
+          <button class="perigo" id="mn-ed-excluir">Excluir gravação</button>
         </div>
       </div>
     </header>

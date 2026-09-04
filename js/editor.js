@@ -13,28 +13,28 @@ B7.Editor = (function () {
   const DIRECAO_PADRAO = { 'Gancho': 'DIRETO PRA CÂMERA', 'Narrativa': 'DIRETO PRA CÂMERA',
                            'Narração': 'VOZ EM OFF', 'CTA': 'DIRETO PRA CÂMERA' };
 
-  let E = { diaria: null, roteiros: [], cenas: {}, atual: null };
+  let E = { gravacao: null, roteiros: [], cenas: {}, atual: null };
   let zoomManual = null;
   let fechadas = new Set();     // cenas recolhidas (só visual)
 
   /* =================================================== carregar */
-  async function abrir(diariaId, roteiroAlvo) {
+  async function abrir(gravacaoId, roteiroAlvo) {
     document.getElementById('escrita').innerHTML =
       '<div class="esqueleto" style="height:120px;margin-bottom:14px"></div>' +
       '<div class="esqueleto" style="height:220px"></div>';
     document.getElementById('folhas').innerHTML = '';
 
     try {
-      const diaria = await B7.DB.diaria(diariaId);
-      const roteiros = await B7.DB.listarRoteiros(diariaId);
+      const gravacao = await B7.DB.gravacao(gravacaoId);
+      const roteiros = await B7.DB.listarRoteiros(gravacaoId);
       const ids = roteiros.map(r => r.id);
-      const todasCenas = await B7.DB.listarCenasDaDiaria(ids);
+      const todasCenas = await B7.DB.listarCenasDaGravacao(ids);
       const cenas = {};
       ids.forEach(id => cenas[id] = []);
       todasCenas.forEach(c => (cenas[c.script_id] = cenas[c.script_id] || []).push(c));
 
-      E = { diaria, roteiros, cenas, atual: null };
-      const ultimo = B7.pref.ler('ultimo_roteiro_' + diariaId, null);
+      E = { gravacao, roteiros, cenas, atual: null };
+      const ultimo = B7.pref.ler('ultimo_roteiro_' + gravacaoId, null);
       E.atual = (roteiroAlvo && ids.includes(roteiroAlvo)) ? roteiroAlvo
               : (ultimo && ids.includes(ultimo) ? ultimo : (ids[0] || null));
 
@@ -44,32 +44,32 @@ B7.Editor = (function () {
       B7.Save.atualizar();
     } catch (e) {
       console.error(e);
-      B7.UI.toast('Não consegui carregar a diária: ' + (e.message || ''), { tipo: 'erro' });
+      B7.UI.toast('Não consegui carregar a gravação: ' + (e.message || ''), { tipo: 'erro' });
       location.hash = '#/';
     }
   }
 
   /* =================================================== cabeçalho */
   function cabecalho() {
-    const d = E.diaria;
-    document.getElementById('ed-cliente').textContent = d.cliente_nome;
-    document.getElementById('ed-diaria').textContent =
-      d.nome + (d.data_gravacao ? ' · ' + B7.UI.dataBR(d.data_gravacao) : '');
+    const g = E.gravacao;
+    document.getElementById('ed-cliente').textContent = g.cliente_nome;
+    document.getElementById('ed-gravacao').textContent =
+      g.nome + (g.data_gravacao ? ' · ' + B7.UI.dataBR(g.data_gravacao) : '');
     const bt = document.getElementById('ed-status');
-    bt.innerHTML = B7.UI.badgeStatus(d.status);
+    bt.innerHTML = B7.UI.badgeStatus(g.status);
   }
 
   function menuStatus() {
-    const m = B7.UI.modal('<h3>Status da diária</h3><div class="sub">Aparece no dashboard e na lista do cliente.</div>' +
+    const m = B7.UI.modal('<h3>Status da gravação</h3><div class="sub">Aparece no dashboard e na lista do cliente.</div>' +
       ['Rascunho', 'Pronto para gravar', 'Gravado'].map(s =>
         '<button class="b" style="width:100%;justify-content:flex-start;margin-bottom:8px" data-s="' + s + '">' +
         B7.UI.badgeStatus(s) + '</button>').join('') +
       '<div class="acoes"><button class="b" data-fecha>Fechar</button></div>');
     m.querySelectorAll('[data-s]').forEach(b => b.onclick = async () => {
       const s = b.dataset.s;
-      E.diaria.status = s;
+      E.gravacao.status = s;
       cabecalho(); m.fechar();
-      try { await B7.Save.acao(() => B7.DB.atualizarDiaria(E.diaria.id, { status: s }), 'Status: ' + s); }
+      try { await B7.Save.acao(() => B7.DB.atualizarGravacao(E.gravacao.id, { status: s }), 'Status: ' + s); }
       catch (e) {}
     });
   }
@@ -105,7 +105,7 @@ B7.Editor = (function () {
   function selecionar(id) {
     if (id === E.atual) return;
     E.atual = id;
-    B7.pref.gravar('ultimo_roteiro_' + E.diaria.id, id);
+    B7.pref.gravar('ultimo_roteiro_' + E.gravacao.id, id);
     renderTrilho(); renderEscrita(); renderPrevia();
     document.getElementById('escrita').scrollTop = 0;
   }
@@ -128,7 +128,7 @@ B7.Editor = (function () {
   async function novoRoteiro(silencioso) {
     try {
       const r = await B7.Save.acao(() => B7.DB.criarRoteiro({
-        recording_session_id: E.diaria.id,
+        recording_session_id: E.gravacao.id,
         position: E.roteiros.length,
         titulo: '', objetivo: '', observacao_gravacao: '',
         escala: 1, escala_automatica: true
@@ -182,7 +182,7 @@ B7.Editor = (function () {
                 await B7.DB.restaurar('roteiros', registro);
                 if (cenasCopia.length) await B7.DB.criarCenas(cenasCopia);
               }, 'Roteiro restaurado');
-              await abrir(E.diaria.id, registro.id);
+              await abrir(E.gravacao.id, registro.id);
             } catch (e) {}
           }
         });
@@ -192,7 +192,7 @@ B7.Editor = (function () {
     if (E.roteiros.length === 1) {
       B7.UI.confirmar({
         titulo: 'Excluir o único roteiro?',
-        texto: 'A diária ficará sem roteiros. Você pode desfazer logo em seguida.',
+        texto: 'A gravação ficará sem roteiros. Você pode desfazer logo em seguida.',
         rotulo: 'Excluir', perigo: true, aoConfirmar: aplicar
       });
     } else aplicar();
@@ -203,7 +203,7 @@ B7.Editor = (function () {
     const cx = document.getElementById('escrita');
     const r = E.roteiros.find(x => x.id === E.atual);
     if (!r) {
-      cx.innerHTML = '<div class="vazio"><b>Nenhum roteiro nesta diária</b>' +
+      cx.innerHTML = '<div class="vazio"><b>Nenhum roteiro nesta gravação</b>' +
         '<p>Crie o primeiro roteiro para começar.</p>' +
         '<button class="b pri" onclick="B7.Editor.novoRoteiro()">+ Novo roteiro</button></div>';
       return;
@@ -487,8 +487,9 @@ B7.Editor = (function () {
     const idx = E.roteiros.findIndex(x => x.id === r.id);
 
     cx.innerHTML = B7.Folha.folhaHTML({
-      cliente: E.diaria.cliente_nome,
-      dataGravacao: E.diaria.data_gravacao ? B7.UI.dataBR(E.diaria.data_gravacao) : '',
+      cliente: E.gravacao.cliente_nome,
+      gravacao: E.gravacao.nome,
+      dataGravacao: E.gravacao.data_gravacao ? B7.UI.dataBR(E.gravacao.data_gravacao) : '',
       roteiro: r, cenas: E.cenas[r.id] || [], indice: idx, total: E.roteiros.length
     });
 
@@ -528,42 +529,42 @@ B7.Editor = (function () {
   /* =================================================== impressão */
   function imprimir() {
     B7.Impressao.abrirSelecao({
-      cliente: E.diaria.cliente_nome,
-      dataGravacao: E.diaria.data_gravacao ? B7.UI.dataBR(E.diaria.data_gravacao) : '',
-      diaria: E.diaria.nome,
+      cliente: E.gravacao.cliente_nome,
+      gravacao: E.gravacao.nome,
+      dataGravacao: E.gravacao.data_gravacao ? B7.UI.dataBR(E.gravacao.data_gravacao) : '',
       roteiros: E.roteiros,
       cenasPorRoteiro: E.cenas
     });
   }
 
-  /* ================================================ dados da diária */
-  function editarDiaria() {
-    const d = E.diaria;
-    const m = B7.UI.modal('<h3>Dados da diária</h3>' +
-      '<div class="mb"><label class="rot">NOME</label><input class="campo" id="dd-nome" data-foco value="' + esc(d.nome) + '"></div>' +
-      '<div class="linha mb"><div><label class="rot">DATA</label>' +
-        '<input class="campo" id="dd-data" type="date" value="' + (d.data_gravacao || '') + '"></div>' +
-        '<div><label class="rot">LOCAL</label><input class="campo" id="dd-local" value="' + esc(d.local || '') + '"></div></div>' +
+  /* ============================================== dados da gravação */
+  function editarGravacao() {
+    const g = E.gravacao;
+    const m = B7.UI.modal('<h3>Dados da gravação</h3>' +
+      '<div class="mb"><label class="rot">NOME DA GRAVAÇÃO</label><input class="campo" id="dd-nome" data-foco value="' + esc(g.nome) + '"></div>' +
+      '<div class="linha mb"><div><label class="rot">DATA (OPCIONAL)</label>' +
+        '<input class="campo" id="dd-data" type="date" value="' + (g.data_gravacao || '') + '"></div>' +
+        '<div><label class="rot">LOCAL</label><input class="campo" id="dd-local" value="' + esc(g.local || '') + '"></div></div>' +
       '<div class="linha mb"><div><label class="rot">RESPONSÁVEL</label>' +
-        '<input class="campo" id="dd-resp" value="' + esc(d.responsavel || '') + '"></div>' +
-        '<div><label class="rot">VIDEOMAKER</label><input class="campo" id="dd-video" value="' + esc(d.videomaker || '') + '"></div></div>' +
+        '<input class="campo" id="dd-resp" value="' + esc(g.responsavel || '') + '"></div>' +
+        '<div><label class="rot">VIDEOMAKER</label><input class="campo" id="dd-video" value="' + esc(g.videomaker || '') + '"></div></div>' +
       '<div class="mb"><label class="rot">OBSERVAÇÕES</label>' +
-        '<textarea class="campo" id="dd-obs" rows="2">' + esc(d.observacoes || '') + '</textarea></div>' +
+        '<textarea class="campo" id="dd-obs" rows="2">' + esc(g.observacoes || '') + '</textarea></div>' +
       '<div class="acoes"><button class="b" data-fecha>Cancelar</button>' +
       '<button class="b pri" data-ok>Salvar</button></div>');
 
     m.querySelector('[data-ok]').onclick = async () => {
       const patch = {
-        nome: m.querySelector('#dd-nome').value.trim() || d.nome,
+        nome: m.querySelector('#dd-nome').value.trim() || g.nome,
         data_gravacao: m.querySelector('#dd-data').value || null,
         local: m.querySelector('#dd-local').value,
         responsavel: m.querySelector('#dd-resp').value,
         videomaker: m.querySelector('#dd-video').value,
         observacoes: m.querySelector('#dd-obs').value
       };
-      Object.assign(E.diaria, patch);
+      Object.assign(E.gravacao, patch);
       m.fechar(); cabecalho(); renderPrevia();
-      try { await B7.Save.acao(() => B7.DB.atualizarDiaria(d.id, patch), 'Diária atualizada'); } catch (e) {}
+      try { await B7.Save.acao(() => B7.DB.atualizarGravacao(g.id, patch), 'Gravação atualizada'); } catch (e) {}
     };
   }
 
@@ -579,7 +580,7 @@ B7.Editor = (function () {
     if (document.getElementById('tela-editor').classList.contains('ativa')) aplicarZoom();
   });
 
-  return { abrir, novoRoteiro, duplicarRoteiro, excluirRoteiro, imprimir, editarDiaria,
+  return { abrir, novoRoteiro, duplicarRoteiro, excluirRoteiro, imprimir, editarGravacao,
            menuStatus, modoFoco, zoom, zoomAjustar, aplicarZoom,
            get estado() { return E; } };
 })();

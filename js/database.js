@@ -45,34 +45,34 @@ B7.DB = (function () {
       return ok(await sb().from('clientes').delete().eq('id', id));
     },
 
-    /* ----------------------------------------------------- DIÁRIAS */
-    async listarDiarias(clienteId) {
-      let q = sb().from('diarias_resumo').select('*');
+    /* --------------------------------------------------- GRAVAÇÕES */
+    async listarGravacoes(clienteId) {
+      let q = sb().from('gravacoes_resumo').select('*');
       if (clienteId) q = q.eq('client_id', clienteId);
-      return ok(await q.order('data_gravacao', { ascending: false }).order('updated_at', { ascending: false }));
+      return ok(await q.order('updated_at', { ascending: false }));
     },
-    async diariasRecentes(limite = 6) {
-      return ok(await sb().from('diarias_resumo').select('*')
+    async gravacoesRecentes(limite = 6) {
+      return ok(await sb().from('gravacoes_resumo').select('*')
         .order('updated_at', { ascending: false }).limit(limite));
     },
-    async diaria(id) {
-      return ok(await sb().from('diarias_resumo').select('*').eq('id', id).single());
+    async gravacao(id) {
+      return ok(await sb().from('gravacoes_resumo').select('*').eq('id', id).single());
     },
-    async criarDiaria(dados) {
-      const linhas = ok(await sb().from('diarias').insert([dados]).select());
+    async criarGravacao(dados) {
+      const linhas = ok(await sb().from('gravacoes').insert([dados]).select());
       return linhas[0];
     },
-    async atualizarDiaria(id, patch) {
-      return ok(await sb().from('diarias').update(patch).eq('id', id).select());
+    async atualizarGravacao(id, patch) {
+      return ok(await sb().from('gravacoes').update(patch).eq('id', id).select());
     },
-    async excluirDiaria(id) {
-      return ok(await sb().from('diarias').delete().eq('id', id));
+    async excluirGravacao(id) {
+      return ok(await sb().from('gravacoes').delete().eq('id', id));
     },
 
     /* ---------------------------------------------------- ROTEIROS */
-    async listarRoteiros(diariaId) {
+    async listarRoteiros(gravacaoId) {
       return ok(await sb().from('roteiros').select('*')
-        .eq('recording_session_id', diariaId).order('position'));
+        .eq('recording_session_id', gravacaoId).order('position'));
     },
     async criarRoteiro(dados) {
       const linhas = ok(await sb().from('roteiros').insert([dados]).select());
@@ -91,7 +91,7 @@ B7.DB = (function () {
     },
 
     /* ------------------------------------------------------- CENAS */
-    async listarCenasDaDiaria(roteiroIds) {
+    async listarCenasDaGravacao(roteiroIds) {
       if (!roteiroIds.length) return [];
       return ok(await sb().from('cenas').select('*').in('script_id', roteiroIds).order('position'));
     },
@@ -145,9 +145,9 @@ B7.DB = (function () {
       return copia;
     },
 
-    async duplicarDiaria(diariaId, dados) {
-      const nova = await this.criarDiaria(dados);
-      const roteiros = await this.listarRoteiros(diariaId);
+    async duplicarGravacao(gravacaoId, dados) {
+      const nova = await this.criarGravacao(dados);
+      const roteiros = await this.listarRoteiros(gravacaoId);
       for (let i = 0; i < roteiros.length; i++) {
         const r = roteiros[i];
         const copia = await this.criarRoteiro({
@@ -170,14 +170,14 @@ B7.DB = (function () {
     /* ------------------------------------------------------- BUSCA */
     async buscar(termo) {
       const t = `%${termo.trim()}%`;
-      const [clientes, diarias, roteiros] = await Promise.all([
+      const [clientes, gravacoes, roteiros] = await Promise.all([
         sb().from('clientes_resumo').select('*').ilike('nome', t).limit(6),
-        sb().from('diarias_resumo').select('*').ilike('nome', t).limit(8),
+        sb().from('gravacoes_resumo').select('*').ilike('nome', t).limit(8),
         sb().from('roteiros').select('id,titulo,recording_session_id').ilike('titulo', t).limit(8)
       ]);
       return {
         clientes: clientes.data || [],
-        diarias: diarias.data || [],
+        gravacoes: gravacoes.data || [],
         roteiros: roteiros.data || []
       };
     },
@@ -193,25 +193,25 @@ B7.DB = (function () {
       };
       const inicioMes = new Date();
       inicioMes.setDate(1); inicioMes.setHours(0, 0, 0, 0);
-      const [clientes, diarias, roteiros, mes] = await Promise.all([
-        conta('clientes'), conta('diarias'), conta('roteiros'),
+      const [clientes, gravacoes, roteiros, mes] = await Promise.all([
+        conta('clientes'), conta('gravacoes'), conta('roteiros'),
         conta('roteiros', q => q.gte('created_at', inicioMes.toISOString()))
       ]);
-      return { clientes, diarias, roteiros, mes };
+      return { clientes, gravacoes, roteiros, mes };
     },
 
     /* ------------------------------------------------------ BACKUP */
     async exportarTudo() {
-      const [clientes, diarias, roteiros, cenas] = await Promise.all([
+      const [clientes, gravacoes, roteiros, cenas] = await Promise.all([
         sb().from('clientes').select('*'),
-        sb().from('diarias').select('*'),
+        sb().from('gravacoes').select('*'),
         sb().from('roteiros').select('*'),
         sb().from('cenas').select('*')
       ]);
-      for (const r of [clientes, diarias, roteiros, cenas]) if (r.error) throw r.error;
+      for (const r of [clientes, gravacoes, roteiros, cenas]) if (r.error) throw r.error;
       return {
         formato: 'roteiros-b7-backup', versao: 1, gerado_em: new Date().toISOString(),
-        clientes: clientes.data, diarias: diarias.data,
+        clientes: clientes.data, gravacoes: gravacoes.data,
         roteiros: roteiros.data, cenas: cenas.data
       };
     },
@@ -226,10 +226,10 @@ B7.DB = (function () {
         return linhas.length;
       };
       const c = await passo('clientes', pacote.clientes);
-      const d = await passo('diarias', pacote.diarias);
+      const d = await passo('gravacoes', pacote.gravacoes || pacote.diarias);  // aceita backup da versão anterior
       const r = await passo('roteiros', pacote.roteiros);
       const e = await passo('cenas', pacote.cenas);
-      return { clientes: c, diarias: d, roteiros: r, cenas: e };
+      return { clientes: c, gravacoes: d, roteiros: r, cenas: e };
     }
   };
 
