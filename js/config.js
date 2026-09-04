@@ -10,6 +10,6 @@
    ===================================================================== */
 
 window.B7_CONFIG = {
-  SUPABASE_URL: 'https://sfdjstnrwoaaaayydahw.supabase.co/rest/v1/',
+  SUPABASE_URL: 'https://sfdjstnrwoaaaayydahw.supabase.co/',
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_rIPIwtTl4A3jgtztG4mWSQ_jwVv-Wuu'
 };
