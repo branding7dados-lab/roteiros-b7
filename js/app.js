@@ -34,6 +34,7 @@ B7.Rota = (function () {
       mostrar('tela-editor');
       document.querySelectorAll('.nav a').forEach(a =>
         a.classList.toggle('on', a.dataset.ir === '#/gravacoes'));
+      if (B7.moverTrilha) B7.moverTrilha();
       document.body.dataset.aba = document.body.dataset.aba || 'editor';
       await B7.Editor.abrir(partes[1], params.get('roteiro'));
       if (params.get('imprimir')) setTimeout(() => B7.Editor.imprimir(), 350);
@@ -44,6 +45,7 @@ B7.Rota = (function () {
       await B7.Dashboard.abrirCliente(partes[1]);
       return;
     }
+    if (partes[0] === 'config')    { mostrar('tela-dashboard'); return B7.Dashboard.abrirConfig(); }
     if (partes[0] === 'clientes')  { mostrar('tela-dashboard'); return B7.Dashboard.abrirClientes(); }
     if (partes[0] === 'gravacoes') { mostrar('tela-dashboard'); return B7.Dashboard.abrirGravacoes(); }
     if (partes[0] === 'roteiros')  { mostrar('tela-dashboard'); return B7.Dashboard.abrirRoteiros(); }
@@ -62,7 +64,12 @@ B7.Rota = (function () {
     B7.Save.agora().finally(ir);
   });
 
-  return { ir, recarregar };
+  /* título da aba acompanha o contexto */
+  function titulo(partes) {
+    document.title = partes && partes.length ? partes.join(' · ') + ' · Roteiros B7' : 'Roteiros B7';
+  }
+
+  return { ir, recarregar, titulo };
 })();
 
 
@@ -128,6 +135,7 @@ B7.Rota = (function () {
     });
     document.getElementById('nav-backup').onclick = () => B7.Backup.menu();
     document.getElementById('nav-atalhos').onclick = () => B7.UI.atalhos();
+    document.getElementById('nav-config').onclick = () => { location.hash = '#/config'; };
     document.getElementById('bt-recolher').onclick = () => {
       const r = document.body.classList.toggle('recolhida');
       B7.pref.gravar('sidebar_recolhida', r);
@@ -153,25 +161,86 @@ B7.Rota = (function () {
     window.addEventListener('offline', pintarEstado);
     pintarEstado();
 
+    /* ---- B7 Light Trail: a trilha desliza até o item ativo ---- */
+    const nav = document.querySelector('.nav');
+    const trilha = document.createElement('div');
+    trilha.className = 'nav-trilha';
+    nav.appendChild(trilha);
+    B7.moverTrilha = function () {
+      const ativo = nav.querySelector('a.on');
+      if (!ativo) { trilha.classList.remove('visivel'); return; }
+      trilha.style.top = (ativo.offsetTop + 8) + 'px';
+      trilha.style.height = (ativo.offsetHeight - 16) + 'px';
+      trilha.classList.add('visivel');
+    };
+    /* nada de observar mutações aqui: a própria trilha muda de classe e o
+       observador se auto-alimentava. Quem marca a seção ativa chama isto. */
+    window.addEventListener('resize', () => B7.moverTrilha());
+    setTimeout(() => B7.moverTrilha(), 60);
+
+    /* ---- tema claro/escuro ---- */
+    const trocarLogos = () => {
+      const escuro = document.documentElement.getAttribute('data-theme') === 'dark';
+      /* troca o arquivo oficial, nunca inverte ou recolore a marca */
+      document.querySelectorAll('[data-logo="lockup"]').forEach(img => {
+        img.src = 'assets/brand/logo-' + (escuro ? 'white' : 'color') + '.png';
+      });
+    };
+    B7.alternarTema = function () {
+      const escuro = document.documentElement.getAttribute('data-theme') === 'dark';
+      const novo = escuro ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', novo);
+      try { localStorage.setItem('b7_tema', novo); } catch (e) {}
+      trocarLogos();
+      return novo;
+    };
+    document.querySelectorAll('[data-tema]').forEach(b => b.onclick = () => B7.alternarTema());
+
+    /* densidade da interface, guardada por navegador */
+    B7.aplicarDensidade = function (valor) {
+      const d = valor || B7.pref.ler('densidade', 'confortavel');
+      document.documentElement.setAttribute('data-densidade', d);
+      if (valor) B7.pref.gravar('densidade', valor);
+      return d;
+    };
+    B7.aplicarDensidade();
+    trocarLogos();
+    /* enquanto a pessoa não escolher manualmente, seguimos o sistema */
+    try {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', ev => {
+        if (localStorage.getItem('b7_tema')) return;
+        document.documentElement.setAttribute('data-theme', ev.matches ? 'dark' : 'light');
+        trocarLogos();
+      });
+    } catch (e) {}
+
     /* ---- preferências locais ---- */
     if (B7.pref.ler('foco', false)) document.body.classList.add('foco');
 
     /* ---- atalhos ---- */
     document.addEventListener('keydown', e => {
-      const digitando = /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') { e.preventDefault(); B7.Save.agora(); }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); B7.UI.paleta(); }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p' &&
-          document.getElementById('tela-editor').classList.contains('ativa')) {
-        e.preventDefault(); B7.Editor.imprimir();
+      const alvo = document.activeElement;
+      /* atalhos de letra só fora de campos de texto — nunca no meio de um roteiro */
+      const digitando = /^(INPUT|TEXTAREA|SELECT)$/.test(alvo.tagName) || alvo.isContentEditable;
+      const noEditor = document.getElementById('tela-editor').classList.contains('ativa');
+      const temModal = !!document.querySelector('.fundo-modal');
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); B7.Save.agora(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); B7.UI.paleta(); return; }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'p' && noEditor) {
+        e.preventDefault(); B7.Editor.imprimir(); return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault(); B7.UI.paleta();
+      if (e.ctrlKey || e.metaKey || e.altKey || digitando || temModal) return;
+
+      if (e.key === '/') {
+        const busca = document.getElementById('campo-busca');
+        if (busca && !noEditor) { e.preventDefault(); busca.focus(); }
       }
-      if (e.key === '/' && !digitando &&
-          document.getElementById('tela-dashboard').classList.contains('ativa')) {
-        e.preventDefault(); document.getElementById('campo-busca').focus();
-      }
+      if (e.key === '?') { e.preventDefault(); B7.UI.atalhos(); }
+      if (e.key === 'n' || e.key === 'N') { e.preventDefault(); B7.Dashboard.modalNovaGravacao(); }
+      if (e.key === 'c' || e.key === 'C') { e.preventDefault(); B7.Dashboard.modalNovoCliente(); }
+      if ((e.key === 'f' || e.key === 'F') && noEditor) { e.preventDefault(); B7.Editor.modoFoco(); }
+      if ((e.key === 'p' || e.key === 'P') && noEditor) { e.preventDefault(); B7.Editor.imprimir(); }
     });
 
     B7.UI.ligarMenus(document);

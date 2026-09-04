@@ -3,6 +3,20 @@
    impressão. Alterar aqui muda o papel; pense duas vezes.
    ===================================================================== */
 
+/* =====================================================================
+   A folha é um documento impresso, não interface: ela NÃO acompanha o
+   tema. Redefinindo os tokens aqui dentro, o modo escuro para na borda
+   do papel — na tela e na impressão. O entorno pode ficar escuro; a
+   folha continua branca, exatamente como sai na gráfica.
+   ===================================================================== */
+.folha, #area-impressao{
+  --ink:#15122B; --ink-2:#3B3557; --grey:#8B85A0; --line:#E5E0EE;
+  --lilac:#F5F1FB; --tint:#FBF0F8; --erro:#C2185B;
+  --magenta:#C21C83; --roxo:#7C1E85; --violeta:#3A1E86; --marinho:#001559;
+  --grad:linear-gradient(118deg,#001559 0%,#3A1E86 34%,#7C1E85 66%,#C21C83 100%);
+  color:#15122B;
+}
+
 .folha{--fs:1;width:210mm;height:297mm;min-height:297mm;max-height:297mm;position:relative;
   overflow:hidden;background:#fff;box-shadow:0 8px 40px rgba(28,16,48,.14);margin-bottom:26px;
   display:flex;flex-direction:column;padding:16mm 18mm;}
@@ -156,7 +170,9 @@
 #area-impressao{display:none;}
 
 @media print{
-  html,body{height:auto;overflow:visible;background:#fff;}
+  /* impressão sempre no design claro aprovado, mesmo com a interface no
+     modo escuro */
+  html,body{height:auto;overflow:visible;background:#fff !important;color:#15122B;}
   #app,#toasts,.fundo-modal,.zoom,#setup{display:none !important;}
   #area-impressao{display:block !important;}
   #area-impressao .folha{box-shadow:none !important;margin:0 !important;

@@ -26,6 +26,70 @@ B7.Dashboard = (function () {
 
   let ultimaGravacao = null;    // alimenta as ações rápidas
 
+  /* ---------------------------------------------------- capa da gravação
+     Montada em CSS a partir dos dados reais — nenhuma imagem gerada. */
+  function capa(g, grande) {
+    const selo = g.cliente_logo_url
+      ? '<div class="selo"><img src="' + esc(g.cliente_logo_url) + '" alt=""></div>'
+      : '<div class="selo">' + esc(B7.UI.iniciais(g.cliente_nome)) + '</div>';
+    return '<div class="capa' + (grande ? ' grande' : '') + '">' +
+      '<div class="malha"></div><div class="marca"></div>' + selo +
+      '<div class="tit"><small>' + esc(g.cliente_nome) + '</small><b>' + esc(g.nome) + '</b></div>' +
+    '</div>';
+  }
+
+  /* carregando de verdade: o símbolo oficial pulsando, curto */
+  function carregando(texto) {
+    return '<div class="b7-load"><div class="simbolo"></div>' +
+      '<div class="txt">' + esc(texto || 'Carregando…') + '</div></div>';
+  }
+
+  /* prévia dos roteiros no hover — carrega uma vez por gravação e guarda */
+  const cachePrevia = {};
+  function ligarPrevia(raiz) {
+    if (window.matchMedia('(pointer: coarse)').matches) return;   // nada disso no toque
+    raiz.querySelectorAll('.card-gravacao[data-gravacao], .destaque-grav[data-gravacao]').forEach(card => {
+      let caixa = null, timer = null;
+      card.onmouseenter = () => {
+        timer = setTimeout(async () => {
+          const id = card.dataset.gravacao;
+          if (!cachePrevia[id]) {
+            try { cachePrevia[id] = await B7.DB.previaRoteiros(id, 3); } catch (e) { return; }
+          }
+          const roteiros = cachePrevia[id];
+          if (!roteiros.length) return;
+          const total = +(card.dataset.totalRoteiros || roteiros.length);
+          caixa = document.createElement('div');
+          caixa.className = 'previa-roteiros';
+          caixa.innerHTML = '<div class="rot">ROTEIROS</div>' + roteiros.map((r, i) =>
+            '<div class="it"><b>' + String((r.position || i) + 1).padStart(2, '0') + '</b>' +
+            '<span>' + esc(r.titulo || 'Sem título') + '</span></div>').join('') +
+            (total > roteiros.length ? '<div class="mais">+' + (total - roteiros.length) + ' roteiros</div>' : '');
+          card.style.position = 'relative';
+          card.appendChild(caixa);
+          requestAnimationFrame(() => caixa && caixa.classList.add('aberta'));
+        }, 380);
+      };
+      card.onmouseleave = () => {
+        clearTimeout(timer);
+        if (caixa) { caixa.remove(); caixa = null; }
+      };
+    });
+  }
+
+  /* spotlight: o brilho acompanha o cursor apenas nos cards principais */
+  function ligarSpotlight(raiz) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    raiz.querySelectorAll('.spot').forEach(el => {
+      el.onmousemove = e => {
+        const r = el.getBoundingClientRect();
+        el.style.setProperty('--mx', (e.clientX - r.left) + 'px');
+        el.style.setProperty('--my', (e.clientY - r.top) + 'px');
+      };
+    });
+  }
+
+
   /* ------------------------------------------------------- esqueleto */
   function esqueleto(tipo) {
     const cx = tipo === 'lista'
@@ -33,24 +97,25 @@ B7.Dashboard = (function () {
         '<div class="grade-clientes">' + '<div class="esqueleto" style="height:78px"></div>'.repeat(6) + '</div>'
       : '<div class="esqueleto" style="height:172px;border-radius:22px;margin-bottom:20px"></div>' +
         '<div class="metricas">' + '<div class="esqueleto" style="height:140px"></div>'.repeat(4) + '</div>' +
-        '<div class="colunas"><div>' +
-          '<div class="esqueleto" style="height:116px;margin-bottom:12px"></div>' +
-          '<div class="grade">' + '<div class="esqueleto" style="height:160px"></div>'.repeat(3) + '</div>' +
-        '</div><div class="apoio"><div class="esqueleto" style="height:262px"></div>' +
-        '<div class="esqueleto" style="height:158px"></div></div></div>';
+        '<div class="colunas"><div>' + carregando('Carregando sua produção…') + '</div>' +
+        '<div class="apoio"><div class="esqueleto" style="height:262px"></div></div></div>';
     painel().innerHTML = '<div class="conteudo">' + cx + '</div>';
   }
 
   function erro(e, acao) {
     console.error(e);
-    painel().innerHTML = '<div class="conteudo"><div class="cartao vazio"><div class="ilu">' + IC.gravacoes + '</div>' +
-      '<b>Não consegui falar com o banco</b><p>' + esc(e.message || 'Erro desconhecido') + '</p>' +
-      '<button class="b pri" onclick="B7.Dashboard.' + (acao || 'abrir') + '()">Tentar de novo</button></div></div>';
+    painel().innerHTML = '<div class="conteudo entra">' + estadoB7(IC.gravacoes,
+      'Não foi possível carregar esta área.',
+      navigator.onLine ? 'O banco não respondeu. Confira a conexão e tente de novo.'
+                       : 'Você está sem conexão no momento.',
+      '<button class="b pri" onclick="B7.Dashboard.' + (acao || 'abrir') + '()">Tentar novamente</button>' +
+      '<button class="b contorno" onclick="location.hash=\'#/\'">Voltar para a Central B7</button>') + '</div>';
   }
 
   /* ===================================================== DASHBOARD */
   async function abrir() {
     marcarNav('#/');
+    B7.Rota.titulo();
     esqueleto();
     let resumo, recentes, clientes;
     try {
@@ -62,24 +127,24 @@ B7.Dashboard = (function () {
     ultimaGravacao = recentes[0] || null;
     const destaque = recentes[0];
     const outras = recentes.slice(1, 7);
-    const topClientes = [...clientes]
-      .sort((a, b) => String(b.ultima_atividade).localeCompare(String(a.ultima_atividade)))
-      .slice(0, 6);
+    const topClientes = ordenarClientes(clientes).slice(0, 5);
 
-    painel().innerHTML = '<div class="conteudo">' + hero() + metricas(resumo) +
+    painel().innerHTML = '<div class="conteudo entra">' + hero() + metricas(resumo) +
       '<div class="colunas"><div>' +
 
         '<div class="secao"><div class="secao-topo"><h2>Continue de onde parou</h2>' +
           '<div class="espaco"></div>' +
           (recentes.length ? '<button class="b fina contorno" data-ir="#/gravacoes">Ver todas</button>' : '') +
         '</div>' +
-        (destaque ? cardDestaque(destaque) : vazioGravacoes()) +
-        (outras.length ? '<div class="grade">' + outras.map(cardGravacao).join('') + '</div>' : '') +
-        '</div>' +
+        (destaque ? cardDestaque(destaque) : vazioGravacoes()) + '</div>' +
 
-        '<div class="secao"><div class="secao-topo"><h2>Clientes</h2>' +
+        (outras.length ? '<div class="secao"><div class="secao-topo"><h2>Gravações recentes</h2>' +
+          '<span class="conta">' + outras.length + '</span></div>' +
+          '<div class="grade">' + outras.map(cardGravacao).join('') + '</div></div>' : '') +
+
+        '<div class="secao"><div class="secao-topo"><h2>Clientes recentes</h2>' +
           '<span class="conta">' + clientes.length + '</span><div class="espaco"></div>' +
-          (clientes.length ? '<button class="b fina contorno" data-ir="#/clientes">Ver todos</button>' : '') +
+          (clientes.length ? '<button class="b fina contorno" data-ir="#/clientes">Ver todos os clientes</button>' : '') +
         '</div>' +
         (topClientes.length ? '<div class="grade-clientes">' + topClientes.map(cardCliente).join('') + '</div>'
                             : vazioClientes()) +
@@ -91,13 +156,13 @@ B7.Dashboard = (function () {
   }
 
   function hero() {
-    return '<div class="hero">' +
+    return '<div class="hero spot">' +
       '<div class="malha"></div><div class="brilho"></div>' +
       '<img class="simbolo" src="assets/brand/symbol-color.png" alt="">' +
       '<div class="miolo">' +
-        '<div class="olho"><i></i>BRANDING7 · PRODUÇÃO DE CONTEÚDO</div>' +
+        '<div class="olho"><i></i>PRODUÇÃO B7</div>' +
         '<h1>Central de Produção</h1>' +
-        '<p>Organize clientes, gravações e roteiros de forma rápida e eficiente.</p>' +
+        '<p>Da ideia ao take: clientes, gravações e roteiros em um só lugar.</p>' +
         '<div class="acoes">' +
           '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button>' +
           '<button class="b clara" data-ir="#/gravacoes">Ver gravações</button>' +
@@ -129,8 +194,9 @@ B7.Dashboard = (function () {
     '<span class="p"></span><span>editado ' + B7.UI.quando(g.updated_at) + '</span>';
 
   function cardDestaque(g) {
-    return '<div class="destaque-grav" data-gravacao="' + esc(g.id) + '">' +
-      B7.UI.avatarCliente(g.cliente_nome, g.cliente_logo_url, 'g') +
+    return '<div class="destaque-grav spot b7-glow" data-gravacao="' + esc(g.id) + '" ' +
+      'data-total-roteiros="' + g.total_roteiros + '">' +
+      capa(g, true) +
       '<div class="info"><div class="cli">' + esc(g.cliente_nome) + '</div>' +
         '<h3>' + esc(g.nome) + '</h3>' +
         '<div class="meta">' + metaGravacao(g) + '</div></div>' +
@@ -138,32 +204,51 @@ B7.Dashboard = (function () {
         '<button class="b pri">' + IC.play + 'Continuar edição</button>' +
         '<div class="menu"><button class="ico" onclick="event.stopPropagation()">⋯</button>' +
           '<div class="lista"><button data-dup="' + esc(g.id) + '">Duplicar gravação</button>' +
+          '<button data-imprimir="' + esc(g.id) + '">Imprimir</button>' +
           '<button class="perigo" data-excluir="' + esc(g.id) + '">Excluir gravação</button></div></div>' +
       '</div></div>';
   }
 
   function cardGravacao(g) {
-    return '<div class="card-gravacao" data-gravacao="' + esc(g.id) + '">' +
-      '<div class="cli">' + esc(g.cliente_nome) + '</div>' +
-      '<h3>' + esc(g.nome) + '</h3>' +
+    return '<div class="card-gravacao spot eleva" data-gravacao="' + esc(g.id) + '" ' +
+      'data-total-roteiros="' + g.total_roteiros + '">' +
+      capa(g) +
       '<div class="meta">' + metaGravacao(g) + '</div>' +
-      '<div class="rodape">' + B7.UI.chipStatus(g.status) + '<span class="abrir">Abrir →</span></div></div>';
+      '<div class="rodape">' + B7.UI.chipStatus(g.status) +
+        '<div class="menu"><button class="ico" onclick="event.stopPropagation()">⋯</button>' +
+          '<div class="lista"><button data-dup="' + esc(g.id) + '">Duplicar</button>' +
+          '<button data-imprimir="' + esc(g.id) + '">Imprimir</button>' +
+          '<button class="perigo" data-excluir="' + esc(g.id) + '">Excluir</button></div></div>' +
+        '<span class="abrir">Abrir →</span></div></div>';
   }
 
+  const IC_PIN = '<svg viewBox="0 0 24 24"><path d="M9 4h6l-1 6 3.5 3v1.5h-11V13L10 10z"/><path d="M12 14.5V21"/></svg>';
+
   function cardCliente(c) {
-    return '<div class="card-cliente" data-cliente="' + esc(c.id) + '">' +
+    return '<div class="card-cliente spot eleva" data-cliente="' + esc(c.id) + '">' +
       B7.UI.avatarCliente(c.nome, c.logo_url) +
       '<div class="nm"><b>' + esc(c.nome) + '</b><small>' +
         c.total_gravacoes + ' gravaç' + (c.total_gravacoes === 1 ? 'ão' : 'ões') + ' · ' +
         c.total_roteiros + ' roteiro' + (c.total_roteiros === 1 ? '' : 's') +
         ' · ' + B7.UI.quando(c.ultima_atividade) + '</small></div>' +
+      '<button class="ico pin' + (c.is_pinned ? ' fixado' : '') + '" data-fixar="' + esc(c.id) + '" ' +
+        'data-fixado="' + (c.is_pinned ? '1' : '0') + '" title="' +
+        (c.is_pinned ? 'Desafixar cliente' : 'Fixar no topo') + '">' + IC_PIN + '</button>' +
       '<div class="menu"><button class="ico" onclick="event.stopPropagation()">⋯</button><div class="lista">' +
-        '<button data-abrir-cli="' + esc(c.id) + '">Abrir cliente</button>' +
+        '<button data-abrir-cli="' + esc(c.id) + '">Abrir workspace</button>' +
         '<button data-nova-gravacao="' + esc(c.id) + '">Nova gravação</button>' +
-        '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button><hr>' +
+        '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
+        '<button data-fixar="' + esc(c.id) + '" data-fixado="' + (c.is_pinned ? '1' : '0') + '">' +
+          (c.is_pinned ? 'Desafixar' : 'Fixar no topo') + '</button><hr>' +
         '<button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>' +
-      '</div></div>' +
-      '<div class="seta">›</div></div>';
+      '</div></div><div class="seta">›</div></div>';
+  }
+
+  /* fixados primeiro, depois os mais recentes */
+  function ordenarClientes(lista) {
+    return lista.slice().sort((a, b) =>
+      (b.is_pinned ? 1 : 0) - (a.is_pinned ? 1 : 0) ||
+      String(b.ultima_atividade).localeCompare(String(a.ultima_atividade)));
   }
 
   function acoesRapidas(destaque) {
@@ -173,9 +258,10 @@ B7.Dashboard = (function () {
     return '<div class="bloco"><h3>Ações rápidas</h3>' +
       item(IC.mais, 'Nova gravação', 'começar um grupo de roteiros', 'data-nova-gravacao') +
       item(IC.pessoa, 'Novo cliente', 'cadastrar um cliente', 'data-novo-cliente') +
-      item(IC.play, 'Continuar última gravação',
+      item(IC.play, 'Continuar último projeto',
            destaque ? destaque.cliente_nome + ' · ' + destaque.nome : 'nenhuma gravação ainda',
            destaque ? 'data-gravacao="' + esc(destaque.id) + '"' : '', !destaque) +
+      item(IC.clientes, 'Abrir clientes', 'ver todos os workspaces', 'data-ir="#/clientes"') +
       item(IC.imprimir, 'Imprimir roteiro recente',
            destaque ? 'abre a impressão de ' + destaque.nome : 'nenhuma gravação ainda',
            destaque ? 'data-imprimir="' + esc(destaque.id) + '"' : '', !destaque) +
@@ -190,14 +276,21 @@ B7.Dashboard = (function () {
   }
 
   function vazioGravacoes() {
-    return '<div class="cartao vazio"><div class="ilu">' + IC.gravacoes + '</div>' +
-      '<b>Nenhuma gravação ainda</b><p>Crie a primeira gravação e comece a escrever os roteiros.</p>' +
-      '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button></div>';
+    return estadoB7(IC.gravacoes, 'Sua próxima produção começa aqui.',
+      'Crie uma gravação para começar a organizar os roteiros.',
+      '<button class="b pri" data-nova-gravacao>' + IC.mais + 'Nova gravação</button>');
   }
   function vazioClientes() {
-    return '<div class="cartao vazio"><div class="ilu">' + IC.clientes + '</div>' +
-      '<b>Nenhum cliente ainda</b><p>Crie seu primeiro cliente para organizar as gravações.</p>' +
-      '<button class="b pri" data-novo-cliente>' + IC.mais + 'Criar cliente</button></div>';
+    return estadoB7(IC.clientes, 'Nenhum cliente por aqui ainda.',
+      'Cadastre o primeiro cliente para abrir o workspace dele.',
+      '<button class="b pri" data-novo-cliente>' + IC.mais + 'Criar cliente</button>');
+  }
+
+  /* bloco padrão de estado vazio/erro, com o símbolo B7 ao fundo */
+  function estadoB7(icone, titulo, texto, acoes) {
+    return '<div class="estado-b7"><div class="b7-marca fraca"></div>' +
+      '<div class="ilu">' + icone + '</div><b>' + esc(titulo) + '</b><p>' + esc(texto) + '</p>' +
+      (acoes ? '<div class="acoes">' + acoes + '</div>' : '') + '</div>';
   }
 
   /* ================================================ TODAS AS GRAVAÇÕES */
@@ -264,7 +357,8 @@ B7.Dashboard = (function () {
     marcarNav('#/clientes');
     esqueleto('lista');
     let clientes;
-    try { clientes = await B7.DB.listarClientes(); } catch (e) { return erro(e, 'abrirClientes'); }
+    try { clientes = ordenarClientes(await B7.DB.listarClientes()); }
+    catch (e) { return erro(e, 'abrirClientes'); }
 
     painel().innerHTML = '<div class="conteudo">' +
       '<div class="secao-topo"><h2 style="font-size:22px">Clientes</h2>' +
@@ -283,8 +377,7 @@ B7.Dashboard = (function () {
     let filtroAtual = 'Todos', termo = '';
     const aplicar = () => {
       let lista = clientes.slice();
-      if (filtroAtual === 'Mais recentes')
-        lista.sort((a, b) => String(b.ultima_atividade).localeCompare(String(a.ultima_atividade)));
+      lista = ordenarClientes(lista);
       if (filtroAtual === 'Com gravações') lista = lista.filter(c => c.total_gravacoes > 0);
       if (filtroAtual === 'Sem gravações') lista = lista.filter(c => c.total_gravacoes === 0);
       if (termo) lista = lista.filter(c => c.nome.toLowerCase().includes(termo));
@@ -305,53 +398,293 @@ B7.Dashboard = (function () {
   }
 
   /* ====================================================== UM CLIENTE */
-  async function abrirCliente(id) {
+  /* ===================================================================
+     WORKSPACE DO CLIENTE
+     Não é o dashboard geral filtrado: é a visão daquele cliente —
+     capa, resumo próprio, atividade, gravações, roteiros e atalhos.
+     A identidade continua sendo a B7; a marca do cliente entra pela
+     logo e pelo conteúdo, nunca pelas cores da interface.
+     =================================================================== */
+  let abaCliente = 'geral';
+
+  async function abrirCliente(id, aba) {
     marcarNav('#/clientes');
-    esqueleto('lista');
-    let cliente, gravacoes;
+    abaCliente = aba || 'geral';
+    painel().innerHTML = '<div class="conteudo">' + carregando('Abrindo o workspace…') + '</div>';
+
+    let cliente, gravacoes, roteiros;
     try {
-      [cliente, gravacoes] = await Promise.all([B7.DB.cliente(id), B7.DB.listarGravacoes(id)]);
+      [cliente, gravacoes, roteiros] = await Promise.all([
+        B7.DB.cliente(id), B7.DB.listarGravacoes(id), B7.DB.roteirosDoCliente(id, aba === 'roteiros' ? 40 : 5)
+      ]);
       gravacoes.sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at)));
+      B7.Rota.titulo([cliente.nome]);
     } catch (e) { return erro(e, 'abrirClientes'); }
 
-    painel().innerHTML = '<div class="conteudo">' +
-      '<button class="voltar" data-ir="#/clientes">‹ Clientes</button>' +
-      '<div class="cabeca-cliente">' + B7.UI.avatarCliente(cliente.nome, cliente.logo_url, 'g') +
-      '<div style="flex:1;min-width:0"><h1>' + esc(cliente.nome) + '</h1><small>' +
-      cliente.total_gravacoes + ' gravaç' + (cliente.total_gravacoes === 1 ? 'ão' : 'ões') + ' · ' +
-      cliente.total_roteiros + ' roteiro' + (cliente.total_roteiros === 1 ? '' : 's') +
-      ' · última atividade ' + B7.UI.quando(cliente.ultima_atividade) + '</small></div>' +
-      '<button class="b pri" data-nova-gravacao="' + esc(cliente.id) + '">' + IC.mais + 'Nova gravação</button>' +
-      '<button class="b contorno" data-editar-cli="' + esc(cliente.id) + '">Editar cliente</button>' +
-      '<div class="menu"><button class="ico">⋯</button><div class="lista">' +
-        '<button data-nova-gravacao="' + esc(cliente.id) + '">Nova gravação</button>' +
-        '<button data-editar-cli="' + esc(cliente.id) + '">Editar cliente</button><hr>' +
-        '<button class="perigo" data-excluir-cli="' + esc(cliente.id) + '">Excluir cliente</button>' +
-      '</div></div></div>' +
+    /* métricas do cliente, tiradas dos dados reais dele */
+    const conta = st => gravacoes.filter(g => g.status === st).length;
+    const emAndamento = conta('Rascunho') + conta('Pronto para gravar');
+    const ultima = gravacoes[0];
 
-      '<div class="secao-topo"><h2>Gravações</h2><span class="conta">' + gravacoes.length + '</span></div>' +
-      (gravacoes.length ? '<div class="lista-gravacoes">' + gravacoes.map(g =>
-        '<div class="linha-gravacao" data-gravacao="' + esc(g.id) + '">' +
-          '<div class="nm"><b>' + esc(g.nome) + '</b><small>' +
-          g.total_roteiros + ' roteiro' + (g.total_roteiros === 1 ? '' : 's') +
-          (g.data_gravacao ? ' · ' + B7.UI.dataBR(g.data_gravacao) : '') +
-          ' · editado ' + B7.UI.quando(g.updated_at) + '</small></div>' +
-          B7.UI.chipStatus(g.status) +
-          '<div class="menu"><button class="ico" onclick="event.stopPropagation()">⋯</button>' +
-          '<div class="lista"><button data-dup="' + esc(g.id) + '">Duplicar gravação</button>' +
-          '<button class="perigo" data-excluir="' + esc(g.id) + '">Excluir gravação</button></div></div>' +
-          '<div class="seta">›</div></div>').join('') + '</div>'
-        : '<div class="cartao vazio"><div class="ilu">' + IC.gravacoes + '</div>' +
-          '<b>Nenhuma gravação para este cliente</b><p>Crie a primeira e comece os roteiros.</p>' +
-          '<button class="b pri" data-nova-gravacao="' + esc(cliente.id) + '">' + IC.mais + 'Nova gravação</button></div>') +
-      '</div>';
+    painel().innerHTML = '<div class="conteudo entra">' +
+      '<div class="trilha-nav"><button data-ir="#/">Dashboard</button><span>/</span>' +
+        '<button data-ir="#/clientes">Clientes</button><span>/</span><b>' + esc(cliente.nome) + '</b></div>' +
+
+      capaCliente(cliente, gravacoes.length, emAndamento) +
+
+      '<div class="abas-cliente">' +
+        [['geral', 'Visão geral'], ['gravacoes', 'Gravações'], ['roteiros', 'Roteiros']].map(([k, r]) =>
+          '<button data-aba-cli="' + k + '"' + (abaCliente === k ? ' class="on"' : '') + '>' + r + '</button>').join('') +
+      '</div>' +
+
+      (abaCliente === 'geral' ? visaoGeralCliente(cliente, gravacoes, roteiros, emAndamento, conta, ultima)
+       : abaCliente === 'gravacoes' ? abaGravacoesCliente(cliente, gravacoes)
+       : abaRoteirosCliente(cliente, roteiros)) +
+    '</div>';
 
     ligar();
+    painel().querySelectorAll('[data-aba-cli]').forEach(b => b.onclick = () => abrirCliente(id, b.dataset.abaCli));
+    if (abaCliente === 'gravacoes') ligarFiltrosGravacoes(gravacoes);
+  }
+
+  function capaCliente(c, totalGravacoes, emAndamento) {
+    const selo = c.logo_url
+      ? '<div class="selo"><img src="' + esc(c.logo_url) + '" alt=""></div>'
+      : '<div class="selo">' + esc(B7.UI.iniciais(c.nome)) + '</div>';
+    return '<div class="capa-cliente">' +
+      '<div class="malha"></div><div class="brilho"></div><div class="b7-marca"></div>' +
+      selo +
+      '<div class="info"><div class="olho">WORKSPACE · BRANDING7</div>' +
+        '<h1>' + esc(c.nome) + '</h1>' +
+        '<div class="meta"><span>' + totalGravacoes + ' gravaç' + (totalGravacoes === 1 ? 'ão' : 'ões') + '</span>' +
+        '<span class="p"></span><span>' + c.total_roteiros + ' roteiro' + (c.total_roteiros === 1 ? '' : 's') + '</span>' +
+        (emAndamento ? '<span class="p"></span><span>' + emAndamento + ' em andamento</span>' : '') +
+        '<span class="p"></span><span>última atividade ' + B7.UI.quando(c.ultima_atividade) + '</span></div></div>' +
+      '<div class="acoes">' +
+        '<button class="b pri" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + 'Nova gravação</button>' +
+        '<button class="b clara" data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
+        '<div class="menu"><button class="ico" style="color:rgba(255,255,255,.7)">⋯</button><div class="lista">' +
+          '<button data-nova-gravacao="' + esc(c.id) + '">Nova gravação</button>' +
+          '<button data-editar-cli="' + esc(c.id) + '">Editar cliente</button>' +
+          (window.__ultimaDoCliente ? '' : '') +
+          '<hr><button class="perigo" data-excluir-cli="' + esc(c.id) + '">Excluir cliente</button>' +
+        '</div></div>' +
+      '</div></div>';
+  }
+
+  function visaoGeralCliente(c, gravacoes, roteiros, emAndamento, conta, ultima) {
+    const metricas =
+      '<div class="mini-metricas">' +
+        '<div class="mini-metrica"><b>' + gravacoes.length + '</b><span>GRAVAÇÕES</span></div>' +
+        '<div class="mini-metrica"><b>' + c.total_roteiros + '</b><span>ROTEIROS</span></div>' +
+        '<div class="mini-metrica"><b>' + emAndamento + '</b><span>EM ANDAMENTO</span></div>' +
+        '<div class="mini-metrica"><b>' + conta('Gravado') + '</b><span>GRAVADAS</span></div>' +
+      '</div>';
+
+    if (!gravacoes.length) {
+      return metricas + '<div class="cartao vazio" style="position:relative;overflow:hidden">' +
+        '<div class="b7-marca fraca" style="right:24px;bottom:-10px;width:110px;height:110px"></div>' +
+        '<div class="ilu">' + IC.gravacoes + '</div>' +
+        '<b>Nenhuma gravação ainda</b><p>Crie a primeira gravação deste cliente para começar.</p>' +
+        '<button class="b pri" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + 'Nova gravação</button></div>';
+    }
+
+    /* atividade recente: derivada de updated_at, sem inventar histórico */
+    const atividade = gravacoes.slice(0, 5).map(g =>
+      '<div class="item" data-gravacao="' + esc(g.id) + '"><div class="pt"></div>' +
+      '<div class="tx"><b>' + esc(g.nome) + '</b><small>' +
+      (g.status === 'Gravado' ? 'marcada como gravada' : 'atualizada') + ' ' + B7.UI.quando(g.updated_at) +
+      ' · ' + g.total_roteiros + ' roteiro' + (g.total_roteiros === 1 ? '' : 's') + '</small></div></div>').join('');
+
+    const listaRoteiros = roteiros.length ? roteiros.map(r =>
+      '<div class="roteiro-linha" data-gravacao="' + esc(r.recording_session_id) +
+        '" data-roteiro="' + esc(r.id) + '">' +
+        '<div class="n">' + String((r.position || 0) + 1).padStart(2, '0') + '</div>' +
+        '<div class="tx"><b>' + esc(r.titulo || 'Sem título') + '</b><small>' +
+        (r.gravacao ? esc(r.gravacao.nome) + ' · ' : '') + 'editado ' + B7.UI.quando(r.updated_at) + '</small></div>' +
+        (r.gravacao ? B7.UI.chipStatus(r.gravacao.status) : '') + '</div>').join('')
+      : '<div class="vazio" style="padding:26px"><b>Nenhum roteiro ainda</b></div>';
+
+    return metricas +
+      '<div class="colunas"><div>' +
+        '<div class="secao"><div class="secao-topo"><h2>Última gravação</h2></div>' +
+          cardDestaque(ultima) + '</div>' +
+        (gravacoes.length > 1 ? '<div class="secao"><div class="secao-topo"><h2>Gravações</h2>' +
+          '<span class="conta">' + gravacoes.length + '</span><div class="espaco"></div>' +
+          '<button class="b fina contorno" data-aba-cli="gravacoes">Ver todas</button></div>' +
+          '<div class="grade">' + gravacoes.slice(1, 4).map(cardGravacao).join('') + '</div></div>' : '') +
+        '<div class="secao"><div class="secao-topo"><h2>Roteiros recentes</h2>' +
+          '<div class="espaco"></div><button class="b fina contorno" data-aba-cli="roteiros">Ver todos</button></div>' +
+          listaRoteiros + '</div>' +
+      '</div><div class="apoio">' +
+        '<div class="bloco"><h3>Ações rápidas</h3>' +
+          '<button class="acao-rapida" data-nova-gravacao="' + esc(c.id) + '"><div class="ic">' + IC.mais + '</div>' +
+            '<div class="tx"><b>Nova gravação</b><small>para ' + esc(c.nome) + '</small></div></button>' +
+          '<button class="acao-rapida" data-editar-cli="' + esc(c.id) + '"><div class="ic">' + IC.pessoa + '</div>' +
+            '<div class="tx"><b>Editar cliente</b><small>nome, logo e observações</small></div></button>' +
+          '<button class="acao-rapida" data-gravacao="' + esc(ultima.id) + '"><div class="ic">' + IC.play + '</div>' +
+            '<div class="tx"><b>Continuar ' + esc(ultima.nome) + '</b><small>editado ' + B7.UI.quando(ultima.updated_at) + '</small></div></button>' +
+          '<button class="acao-rapida" data-imprimir="' + esc(ultima.id) + '"><div class="ic">' + IC.imprimir + '</div>' +
+            '<div class="tx"><b>Imprimir última gravação</b><small>' + esc(ultima.nome) + '</small></div></button>' +
+          '<button class="acao-rapida" data-dup="' + esc(ultima.id) + '"><div class="ic">' + IC.gravacoes + '</div>' +
+            '<div class="tx"><b>Duplicar última gravação</b><small>copia roteiros e cenas</small></div></button>' +
+        '</div>' +
+        '<div class="bloco"><h3>Atividade recente</h3><div class="atividade">' + atividade + '</div></div>' +
+        (c.observacoes ? '<div class="bloco"><h3>Observações</h3>' +
+          '<p style="font-size:13px;line-height:1.6;color:var(--ink-2)">' + esc(c.observacoes) + '</p></div>' : '') +
+      '</div></div>';
+  }
+
+  function abaGravacoesCliente(c, gravacoes) {
+    return '<div class="barra-filtros">' +
+        '<div class="filtro" id="filtro-cli-grav">' +
+          ['Todas', 'Em andamento', 'Prontas', 'Gravadas'].map((f, i) =>
+            '<button data-f="' + esc(f) + '"' + (i === 0 ? ' class="on"' : '') + '>' + esc(f) + '</button>').join('') +
+        '</div>' +
+        '<input class="campo" id="busca-grav" placeholder="Buscar gravações…">' +
+        '<div class="espaco" style="flex:1"></div>' +
+        '<button class="b pri" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + 'Nova gravação</button>' +
+      '</div>' +
+      (gravacoes.length
+        ? '<div class="grade" id="lista-grav-cli">' + gravacoes.map(cardGravacao).join('') + '</div>'
+        : '<div class="cartao vazio"><div class="ilu">' + IC.gravacoes + '</div><b>Nenhuma gravação ainda</b>' +
+          '<p>Crie a primeira gravação deste cliente para começar.</p>' +
+          '<button class="b pri" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + 'Nova gravação</button></div>');
+  }
+
+  function ligarFiltrosGravacoes(gravacoes) {
+    const mapa = { 'Todas': null, 'Em andamento': 'Rascunho', 'Prontas': 'Pronto para gravar', 'Gravadas': 'Gravado' };
+    let filtro = 'Todas', termo = '';
+    const aplicar = () => {
+      let lista = gravacoes.slice();
+      if (mapa[filtro]) lista = lista.filter(g => g.status === mapa[filtro]);
+      if (termo) lista = lista.filter(g => g.nome.toLowerCase().includes(termo));
+      const cx = document.getElementById('lista-grav-cli');
+      if (!cx) return;
+      cx.innerHTML = lista.length ? lista.map(cardGravacao).join('')
+        : '<div class="vazio" style="grid-column:1/-1"><b>Nada por aqui</b><p>Tente outro filtro ou outra busca.</p></div>';
+      ligar();
+    };
+    const f = document.getElementById('filtro-cli-grav');
+    if (f) f.querySelectorAll('button').forEach(b => b.onclick = () => {
+      f.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on'); filtro = b.dataset.f; aplicar();
+    });
+    const busca = document.getElementById('busca-grav');
+    if (busca) busca.oninput = () => { termo = busca.value.trim().toLowerCase(); aplicar(); };
+  }
+
+  function abaRoteirosCliente(c, roteiros) {
+    if (!roteiros.length) {
+      return '<div class="cartao vazio"><div class="ilu">' + IC.roteiros + '</div>' +
+        '<b>Nenhum roteiro ainda</b><p>Crie uma gravação e comece a escrever.</p>' +
+        '<button class="b pri" data-nova-gravacao="' + esc(c.id) + '">' + IC.mais + 'Nova gravação</button></div>';
+    }
+    return roteiros.map(r =>
+      '<div class="roteiro-linha" data-gravacao="' + esc(r.recording_session_id) +
+        '" data-roteiro="' + esc(r.id) + '">' +
+        '<div class="n">' + String((r.position || 0) + 1).padStart(2, '0') + '</div>' +
+        '<div class="tx"><b>' + esc(r.titulo || 'Sem título') + '</b><small>' +
+        (r.gravacao ? esc(r.gravacao.nome) + ' · ' : '') + 'editado ' + B7.UI.quando(r.updated_at) + '</small></div>' +
+        (r.gravacao ? B7.UI.chipStatus(r.gravacao.status) : '') + '</div>').join('');
+  }
+
+
+  /* =================================================== CONFIGURAÇÕES */
+  function abrirConfig() {
+    marcarNav('#/config');
+    B7.Rota.titulo(['Configurações']);
+    const tema = document.documentElement.getAttribute('data-theme');
+    const densidade = B7.pref.ler('densidade', 'confortavel');
+    const abertura = B7.pref.ler('abertura', false);
+    const recolhida = document.body.classList.contains('recolhida');
+    const online = navigator.onLine;
+
+    const opcao = (grupo, atual, itens) =>
+      '<div class="opcoes" data-grupo="' + grupo + '">' + itens.map(([v, r]) =>
+        '<button data-v="' + v + '"' + (atual === v ? ' class="on"' : '') + '>' + r + '</button>').join('') + '</div>';
+
+    const linha = (titulo, desc, controle) =>
+      '<div class="config-linha"><div class="tx"><b>' + titulo + '</b><small>' + desc + '</small></div>' +
+      controle + '</div>';
+
+    painel().innerHTML = '<div class="conteudo entra" style="max-width:860px">' +
+      '<div class="trilha-nav"><button data-ir="#/">Central B7</button><span>/</span><b>Configurações</b></div>' +
+      '<h1 style="font-family:Archivo;font-size:26px;font-weight:900;letter-spacing:-.03em;margin-bottom:20px">Configurações</h1>' +
+
+      '<div class="config-secao"><h3>Aparência</h3>' +
+        '<div class="desc">Vale só para este navegador — cada pessoa da equipe ajusta o seu.</div>' +
+        linha('Tema', 'claro, escuro ou como está o seu computador',
+              opcao('tema', tema, [['light', 'Claro'], ['dark', 'Escuro'], ['auto', 'Sistema']])) +
+        linha('Densidade', 'quanto conteúdo cabe na tela',
+              opcao('densidade', densidade, [['confortavel', 'Confortável'], ['compacta', 'Compacta']])) +
+        linha('Animações', 'o sistema respeita a preferência do seu sistema operacional',
+              '<span style="font-size:12.5px;color:var(--ink-3)">' +
+              (window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'reduzidas' : 'normais') + '</span>') +
+      '</div>' +
+
+      '<div class="config-secao"><h3>Interface</h3>' +
+        '<div class="desc">Como a navegação se comporta.</div>' +
+        linha('Barra lateral', 'começar recolhida, só com os ícones',
+              opcao('sidebar', recolhida ? 'sim' : 'nao', [['nao', 'Expandida'], ['sim', 'Recolhida']])) +
+        linha('Atalhos de teclado', 'ver a lista completa',
+              '<button class="b contorno" data-atalhos>Ver atalhos</button>') +
+      '</div>' +
+
+      '<div class="config-secao"><h3>Impressão</h3>' +
+        '<div class="desc">A ficha A4 não muda com o tema: ela é sempre clara.</div>' +
+        linha('Folha de abertura', 'vir marcada por padrão na janela de impressão',
+              opcao('abertura', abertura ? 'sim' : 'nao', [['nao', 'Desligada'], ['sim', 'Ligada']])) +
+      '</div>' +
+
+      '<div class="config-secao"><h3>Dados</h3>' +
+        '<div class="desc">O banco é o Supabase. Isto aqui é segurança extra.</div>' +
+        linha('Backup', 'baixa um arquivo com clientes, gravações, roteiros e cenas',
+              '<button class="b contorno" data-exportar>Exportar</button>') +
+        linha('Restaurar', 'devolve os registros de um arquivo de backup',
+              '<button class="b contorno" data-importar>Importar</button>') +
+      '</div>' +
+
+      '<div class="config-secao"><h3>Sistema</h3>' +
+        linha('Conexão com o banco', online ? 'tudo certo por aqui' : 'reconecte para voltar a salvar',
+              '<span class="chip-status ' + (online ? 'gravado' : 'pronto') + '">' +
+              (online ? 'Conectado' : 'Sem conexão') + '</span>') +
+        linha('Versão', 'Roteiros B7', '<span style="font-size:12.5px;color:var(--ink-3)">v2.1</span>') +
+      '</div></div>';
+
+    ligar();
+    painel().querySelectorAll('.opcoes').forEach(cx => {
+      cx.querySelectorAll('button').forEach(b => b.onclick = () => {
+        cx.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+        b.classList.add('on');
+        const grupo = cx.dataset.grupo, v = b.dataset.v;
+        if (grupo === 'tema') {
+          if (v === 'auto') {
+            try { localStorage.removeItem('b7_tema'); } catch (e) {}
+            const escuro = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.setAttribute('data-theme', escuro ? 'dark' : 'light');
+          } else if (document.documentElement.getAttribute('data-theme') !== v) {
+            B7.alternarTema();
+          }
+          B7.UI.toast('Tema atualizado');
+        }
+        if (grupo === 'densidade') { B7.aplicarDensidade(v); B7.UI.toast('Densidade: ' + b.textContent.toLowerCase()); }
+        if (grupo === 'sidebar') {
+          document.body.classList.toggle('recolhida', v === 'sim');
+          B7.pref.gravar('sidebar_recolhida', v === 'sim');
+        }
+        if (grupo === 'abertura') B7.pref.gravar('abertura', v === 'sim');
+      });
+    });
+    const at = painel().querySelector('[data-atalhos]'); if (at) at.onclick = () => B7.UI.atalhos();
+    const ex = painel().querySelector('[data-exportar]'); if (ex) ex.onclick = () => B7.Backup.exportar();
+    const im = painel().querySelector('[data-importar]'); if (im) im.onclick = () => B7.Backup.importar();
   }
 
   /* ====================================================== interações */
   function marcarNav(rota) {
     document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('on', a.dataset.ir === rota));
+    if (B7.moverTrilha) B7.moverTrilha();
   }
 
   function ligar() {
@@ -366,6 +699,10 @@ B7.Dashboard = (function () {
       location.hash = '#/cliente/' + el.dataset.cliente;
     });
     p.querySelectorAll('[data-ir]').forEach(el => el.onclick = () => location.hash = el.dataset.ir);
+    p.querySelectorAll('[data-aba-cli]').forEach(b => b.onclick = () => {
+      const cli = location.hash.split('/')[2];
+      if (cli) abrirCliente(cli, b.dataset.abaCli);
+    });
     p.querySelectorAll('[data-nova-gravacao]').forEach(b => b.onclick = ev => {
       ev.stopPropagation();
       modalNovaGravacao(b.dataset.novaGravacao || undefined);
@@ -388,7 +725,18 @@ B7.Dashboard = (function () {
       ev.stopPropagation();
       location.hash = '#/gravacao/' + b.dataset.imprimir + '?imprimir=1';
     });
+    p.querySelectorAll('[data-fixar]').forEach(b => b.onclick = async ev => {
+      ev.stopPropagation();
+      const fixado = b.dataset.fixado === '1';
+      try {
+        await B7.Save.acao(() => B7.DB.fixarCliente(b.dataset.fixar, !fixado),
+          fixado ? 'Cliente desafixado' : 'Cliente fixado no topo');
+        B7.Rota.recarregar();
+      } catch (e) {}
+    });
+    ligarPrevia(p);
     B7.UI.ligarMenus(p);
+    ligarSpotlight(p);
   }
 
 
@@ -767,7 +1115,7 @@ B7.Dashboard = (function () {
     } catch (e) { console.error(e); }
   }, 240);
 
-  return { abrir, abrirClientes, abrirCliente, abrirGravacoes, abrirRoteiros,
+  return { abrir, abrirClientes, abrirCliente, abrirGravacoes, abrirRoteiros, abrirConfig,
            modalNovaGravacao, modalNovoCliente, modalEditarCliente, excluirCliente,
            buscar, duplicarGravacao, excluirGravacao, IC,
            get ultima() { return ultimaGravacao; } };

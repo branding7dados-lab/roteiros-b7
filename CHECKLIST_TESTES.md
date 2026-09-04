@@ -65,6 +65,40 @@ seu ambiente, está na seção final.
 - Excluir cliente: a confirmação mostra quantas gravações e roteiros serão apagados e exige digitar o nome.
 - Ficha A4: logo do cliente aparece discreta ao lado do nome; sem logo, o layout segue sem espaço vazio.
 
+### Verificado no redesign do modal de impressão e nos temas
+
+- Modal em duas colunas, cards clicáveis (clique em qualquer parte alterna), Todos/Nenhum, contador correto.
+- Folha de abertura separada e fora do contador de roteiros; botão desabilita sem seleção.
+- Teclado: Espaço/Enter marcam, Tab circula dentro do modal, ESC fecha e o foco volta ao botão que abriu.
+- Impressão continua gerando abertura + uma folha A4 por roteiro selecionado.
+- Tema: sistema escuro abre escuro; escolha manual vence e sobrevive ao reload; script no `<head>` evita flash.
+- Dashboard, editor, modais, paleta e formulários acompanham o tema.
+- **A folha A4 continua branca no modo escuro**, na tela e na impressão (verificado no PDF gerado com o app em dark).
+- Logo da B7 troca de arquivo por tema; logos de clientes não recebem nenhum filtro.
+
+### Verificado no B7 Interface System e no workspace do cliente
+
+- Trilha da sidebar aparece no item ativo e desliza ao trocar de seção.
+- Capas de gravação montadas em CSS, com logo do cliente quando existe e iniciais quando não.
+- Dashboard: hero, 4 métricas reais, destaque com capa, gravações recentes, clientes recentes, 5 ações rápidas.
+- Workspace do cliente: capa, breadcrumb, 4 métricas próprias, 3 abas, atividade recente (derivada de `updated_at`), roteiros recentes clicáveis abrindo o editor.
+- Aba Gravações do cliente: filtros por status e busca funcionando.
+- Empty state do cliente sem gravações, com o símbolo B7 discreto.
+- Capas e componentes novos funcionando nos dois temas.
+- Todas as suítes anteriores (autosave, logos, impressão, tema) seguem passando.
+
+### Verificado na rodada de design system e produtividade
+
+- Atalhos N, C, F, P, ?, `/`, Ctrl+K e Ctrl+S funcionando — e não disparando dentro de campos de texto.
+- Painel de atalhos com a lista completa.
+- Command palette abre com Recentes (gravações e clientes) + Ações, e navega por teclado.
+- Prévia dos roteiros ao passar o mouse numa gravação, com "+N roteiros" quando há mais.
+- Fixar cliente grava no banco e move o card para o topo.
+- Configurações com cinco seções; densidade compacta aplica e sobrevive ao reload.
+- Empty states com símbolo B7 e microcopy própria; erro com "Tentar novamente" e volta para a Central.
+- Título da aba muda por contexto (dashboard, cliente, gravação).
+- Rota inexistente não quebra a tela.
+
 ## O que testar você mesmo depois de publicar
 
 Estes dependem do seu Supabase e da sua rede, então não dá para automatizar aqui.

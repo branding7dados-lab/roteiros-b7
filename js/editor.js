@@ -20,8 +20,7 @@ B7.Editor = (function () {
   /* =================================================== carregar */
   async function abrir(gravacaoId, roteiroAlvo) {
     document.getElementById('escrita').innerHTML =
-      '<div class="esqueleto" style="height:120px;margin-bottom:14px"></div>' +
-      '<div class="esqueleto" style="height:220px"></div>';
+      '<div class="b7-load"><div class="simbolo"></div><div class="txt">Carregando roteiros…</div></div>';
     document.getElementById('folhas').innerHTML = '';
 
     try {
@@ -53,6 +52,7 @@ B7.Editor = (function () {
   function cabecalho() {
     const g = E.gravacao;
     document.getElementById('ed-cliente').textContent = g.cliente_nome;
+    B7.Rota.titulo([g.nome, g.cliente_nome]);
     document.getElementById('ed-gravacao').textContent =
       g.nome + (g.data_gravacao ? ' · ' + B7.UI.dataBR(g.data_gravacao) : '');
     const bt = document.getElementById('ed-status');

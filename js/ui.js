@@ -36,15 +36,32 @@ B7.UI = (function () {
 
   /* ------------------------------------------------------------ modais */
   function modal(html, opcoes = {}) {
+    const anterior = document.activeElement;      // para devolver o foco ao fechar
     const fundo = document.createElement('div');
     fundo.className = 'fundo-modal' + (opcoes.classe ? ' ' + opcoes.classe : '');
-    fundo.innerHTML = '<div class="modal' + (opcoes.larga ? ' larga' : '') + '">' + html + '</div>';
+    fundo.innerHTML = '<div class="modal' + (opcoes.larga ? ' larga' : '') +
+      (opcoes.extra ? ' ' + opcoes.extra : '') + '" role="dialog" aria-modal="true">' + html + '</div>';
     fundo.addEventListener('mousedown', e => { if (e.target === fundo) fechar(); });
     document.addEventListener('keydown', tecla);
-    function tecla(e) { if (e.key === 'Escape') fechar(); }
+
+    const focaveis = () => [...fundo.querySelectorAll(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]),' +
+      ' textarea:not([disabled]), [tabindex]:not([tabindex="-1"])')].filter(el => el.offsetParent !== null);
+
+    function tecla(e) {
+      if (e.key === 'Escape') return fechar();
+      if (e.key !== 'Tab') return;
+      /* foco preso dentro do modal enquanto ele estiver aberto */
+      const lista = focaveis();
+      if (!lista.length) return;
+      const primeiro = lista[0], ultimo = lista[lista.length - 1];
+      if (e.shiftKey && document.activeElement === primeiro) { e.preventDefault(); ultimo.focus(); }
+      else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus(); }
+    }
     function fechar() {
       document.removeEventListener('keydown', tecla);
       fundo.remove();
+      if (anterior && anterior.focus) anterior.focus();
       opcoes.aoFechar && opcoes.aoFechar();
     }
     fundo.fechar = fechar;
@@ -180,8 +197,10 @@ B7.UI = (function () {
     const acoes = [
       { ic: ICP.mais,   rot: 'Nova gravação',  dica: 'começar um grupo de roteiros', fn: () => B7.Dashboard.modalNovaGravacao() },
       { ic: ICP.pessoa, rot: 'Novo cliente',   dica: 'cadastrar um cliente',         fn: () => B7.Dashboard.modalNovoCliente() },
-      { ic: ICP.play,   rot: 'Abrir gravação recente', dica: 'últimas gravações editadas', fn: () => recentes() },
-      { ic: ICP.grav,   rot: 'Ver gravações',  dica: 'todas as gravações',           fn: () => { location.hash = '#/gravacoes'; } }
+      { ic: ICP.grav,   rot: 'Ir para clientes', dica: 'todos os workspaces',        fn: () => { location.hash = '#/clientes'; } },
+      { ic: ICP.grav,   rot: 'Ver gravações',  dica: 'todas as gravações',           fn: () => { location.hash = '#/gravacoes'; } },
+      { ic: ICP.play,   rot: 'Configurações',  dica: 'tema, densidade e dados',      fn: () => { location.hash = '#/config'; } },
+      { ic: ICP.play,   rot: 'Alternar tema',  dica: 'claro ou escuro',              fn: () => B7.alternarTema && B7.alternarTema() }
     ];
 
     const m = modal(
@@ -217,15 +236,44 @@ B7.UI = (function () {
       '<button class="cp-item"><div class="ic">' + ic + '</div><div><b>' + esc(titulo) +
       '</b><small>' + esc(sub) + '</small></div></button>';
 
+    /* sem nada digitado, a paleta funciona como launcher: o que foi mexido
+       por último vem primeiro, depois as ações */
+    async function inicial() {
+      let html = '', itens = [];
+      try {
+        const [gravacoes, clientes] = await Promise.all([
+          B7.DB.gravacoesRecentes(3), B7.DB.listarClientes()
+        ]);
+        const cli = clientes
+          .sort((a, b) => String(b.ultima_atividade).localeCompare(String(a.ultima_atividade)))
+          .slice(0, 2);
+        if (gravacoes.length || cli.length) {
+          html += '<div class="cp-grupo">RECENTES</div>';
+          gravacoes.forEach(g => {
+            html += linha(ICP.grav, g.nome, g.cliente_nome + ' · editado ' + quando(g.updated_at));
+            itens.push({ fn: () => { location.hash = '#/gravacao/' + g.id; } });
+          });
+          cli.forEach(c => {
+            html += linha(c.logo_url
+              ? '<img src="' + esc(c.logo_url) + '" style="width:100%;height:100%;object-fit:contain">'
+              : '<span>' + esc(iniciais(c.nome)) + '</span>', c.nome, 'abrir workspace');
+            itens.push({ fn: () => { location.hash = '#/cliente/' + c.id; } });
+          });
+        }
+      } catch (e) { /* sem banco: só as ações */ }
+      html += '<div class="cp-grupo">AÇÕES</div>' + acoes.map(a => linha(a.ic, a.rot, a.dica)).join('');
+      pintar(html, itens.concat(acoes));
+    }
+
     function mostrarAcoes(filtro) {
       const f = (filtro || '').toLowerCase();
       const lst = acoes.filter(a => !f || (a.rot + ' ' + a.dica).toLowerCase().includes(f));
       pintar('<div class="cp-grupo">AÇÕES</div>' + lst.map(a => linha(a.ic, a.rot, a.dica)).join(''), lst);
     }
-    mostrarAcoes('');
+    inicial();
 
     const procurar = debounce(async termo => {
-      if (!termo.trim()) return mostrarAcoes('');
+      if (!termo.trim()) return inicial();
       const acoesFiltradas = acoes.filter(a => (a.rot + ' ' + a.dica).toLowerCase().includes(termo.toLowerCase()));
       let html = '', novos = [];
       if (acoesFiltradas.length) {
@@ -287,12 +335,17 @@ B7.UI = (function () {
       'border-bottom:1px solid var(--borda)"><kbd style="font-family:inherit;background:var(--suave);' +
       'border-radius:6px;padding:4px 9px;font-size:12px;font-weight:600;min-width:74px;text-align:center">' +
       t + '</kbd><span style="font-size:13.5px;color:var(--ink-2)">' + d + '</span></div>';
-    modal('<h3>Atalhos</h3><div class="sub">Funcionam em qualquer tela do sistema.</div>' +
+    modal('<h3>Atalhos</h3><div class="sub">As letras funcionam quando você não está digitando ' +
+      'em nenhum campo.</div>' +
       '<div class="corpo">' +
       linha('Ctrl K', 'ações rápidas e busca') +
       linha('/', 'ir para a busca do topo') +
+      linha('N', 'nova gravação') +
+      linha('C', 'novo cliente') +
+      linha('F', 'modo foco (no editor)') +
+      linha('P', 'imprimir (no editor)') +
       linha('Ctrl S', 'forçar o salvamento agora') +
-      linha('Ctrl P', 'imprimir (dentro do editor)') +
+      linha('?', 'abrir esta lista') +
       linha('Esc', 'fechar janela aberta') +
       '</div><div class="acoes"><button class="b pri" data-fecha>Entendi</button></div>');
   }

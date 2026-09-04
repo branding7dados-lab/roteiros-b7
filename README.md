@@ -114,6 +114,12 @@ computadores da equipe.
 
 ## Como usar no dia a dia
 
+**Workspace do cliente** — clicar num cliente abre o espaço dele, não uma lista:
+capa com a logo, breadcrumb, métricas próprias (gravações, roteiros, em andamento,
+gravadas), última gravação em destaque, roteiros recentes, atividade recente e
+ações rápidas contextuais. Três abas: Visão geral, Gravações (com filtros por
+status e busca) e Roteiros.
+
 **Clientes com logo** — no cadastro e na edição do cliente existe um campo de
 logo, sempre opcional. Aceita PNG, JPG, WEBP e SVG até 2 MB, com prévia antes de
 salvar e arraste-e-solte. A imagem vai para o Supabase Storage (bucket
@@ -143,6 +149,28 @@ não mostra campo de data. O editor abre já com o primeiro roteiro pronto.
 
 **Atalhos** — `Ctrl+K` abre as ações rápidas (nova gravação, novo cliente,
 buscar roteiro e as gravações recentes). A tecla `/` vai direto para a busca.
+
+**Atalhos** — `Ctrl K` ações rápidas · `/` busca · `N` nova gravação · `C` novo
+cliente · `F` modo foco · `P` imprimir · `Ctrl S` salvar agora · `?` lista de
+atalhos. As letras só valem fora de campos de texto, então nunca atrapalham
+enquanto você escreve um roteiro.
+
+**Configurações** (na barra lateral) — tema, densidade da interface (confortável
+ou compacta), barra lateral, folha de abertura padrão na impressão, backup e
+estado da conexão. Essas preferências ficam no navegador de cada pessoa.
+
+**Fixar cliente** — o alfinete no card do cliente joga ele para o topo da lista,
+para todo mundo da equipe.
+
+**Modo claro e escuro** — botão de sol/lua no topo, em qualquer tela. Na primeira
+vez o sistema segue o tema do computador; depois que você escolher, a escolha
+manda e fica guardada naquele navegador. A folha A4 e a impressão **não** seguem
+o tema: continuam claras sempre, porque representam o papel.
+
+**Imprimir** — o modal traz de um lado as instruções e as configurações do Chrome,
+do outro a seleção de roteiros em cards clicáveis, com contador, Todos/Nenhum e a
+folha de abertura como opção separada. O botão fica desabilitado sem nenhum
+roteiro marcado.
 
 **Ctrl + K** — abre as ações rápidas: criar gravação, criar cliente, abrir
 gravação recente e buscar cliente/gravação/roteiro no banco, tudo com navegação

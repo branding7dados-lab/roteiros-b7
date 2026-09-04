@@ -65,6 +65,9 @@ create unique index if not exists clientes_nome_unico
 alter table public.clientes add column if not exists logo_url  text;
 alter table public.clientes add column if not exists logo_path text;
 
+-- cliente fixado no topo da lista (preferência da equipe, não do navegador)
+alter table public.clientes add column if not exists is_pinned boolean not null default false;
+
 -- ---------------------------------------------------------------------
 -- 2. GRAVAÇÕES
 --    data_gravacao é opcional de propósito: a gravação pode ainda não
@@ -214,7 +217,7 @@ drop view if exists public.clientes_resumo;
 create view public.clientes_resumo
 with (security_invoker = on) as
 select
-  c.id, c.nome, c.observacoes, c.logo_url, c.logo_path, c.created_at, c.updated_at,
+  c.id, c.nome, c.observacoes, c.logo_url, c.logo_path, c.is_pinned, c.created_at, c.updated_at,
   (select count(*) from public.gravacoes g where g.client_id = c.id) as total_gravacoes,
   (select count(*) from public.roteiros r
      join public.gravacoes g2 on g2.id = r.recording_session_id

@@ -42,6 +42,17 @@ B7.DB = (function () {
     async atualizarCliente(id, patch) {
       return ok(await sb().from('clientes').update(patch).eq('id', id).select());
     },
+    async fixarCliente(id, fixado) {
+      return ok(await sb().from('clientes').update({ is_pinned: !!fixado }).eq('id', id).select());
+    },
+
+    /* títulos dos primeiros roteiros — alimenta a prévia no hover */
+    async previaRoteiros(gravacaoId, limite = 3) {
+      const linhas = ok(await sb().from('roteiros').select('id,titulo,position')
+        .eq('recording_session_id', gravacaoId).order('position').limit(limite));
+      return linhas;
+    },
+
     async excluirCliente(id) {
       return ok(await sb().from('clientes').delete().eq('id', id));
     },
@@ -186,6 +197,21 @@ B7.DB = (function () {
         }
       }
       return nova;
+    },
+
+    /* roteiros de um cliente, dos mais recentes para os mais antigos */
+    async roteirosDoCliente(clienteId, limite = 5) {
+      const gravacoes = ok(await sb().from('gravacoes').select('id,nome,status')
+        .eq('client_id', clienteId));
+      if (!gravacoes.length) return [];
+      const ids = gravacoes.map(g => g.id);
+      const roteiros = ok(await sb().from('roteiros')
+        .select('id,titulo,position,recording_session_id,updated_at')
+        .in('recording_session_id', ids)
+        .order('updated_at', { ascending: false }).limit(limite));
+      const porId = {};
+      gravacoes.forEach(g => porId[g.id] = g);
+      return roteiros.map(r => ({ ...r, gravacao: porId[r.recording_session_id] || null }));
     },
 
     /* ------------------------------------------------------- BUSCA */
