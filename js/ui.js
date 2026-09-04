@@ -170,6 +170,17 @@ B7.UI = (function () {
     if (s === 'Pronto para gravar') return 'pronto';
     return 'rascunho';
   }
+  /* estágios do roteiro (revisão) — linguagem visual própria, sem neon */
+  const REVISAO = ['Em criação', 'Em revisão', 'Aprovado internamente', 'Pronto para gravar', 'Gravado'];
+  const CLASSE_REVISAO = {
+    'Em criação': 'criacao', 'Em revisão': 'revisao', 'Aprovado internamente': 'aprovado',
+    'Pronto para gravar': 'pronto', 'Gravado': 'gravado'
+  };
+  function chipRevisao(s) {
+    const v = s || 'Em criação';
+    return '<span class="chip-revisao ' + (CLASSE_REVISAO[v] || 'criacao') + '">' + esc(v) + '</span>';
+  }
+
   function chipStatus(s) {
     return '<span class="chip-status ' + classeStatus(s) + '">' + esc(s || 'Rascunho') + '</span>';
   }
@@ -350,6 +361,6 @@ B7.UI = (function () {
       '</div><div class="acoes"><button class="b pri" data-fecha>Entendi</button></div>');
   }
 
-  return { atalhos, avatarCliente, esc, toast, modal, confirmar, ligarMenus, dica, esconderDica, MESES, paleta,
+  return { atalhos, avatarCliente, chipRevisao, REVISAO, CLASSE_REVISAO, esc, toast, modal, confirmar, ligarMenus, dica, esconderDica, MESES, paleta,
            dataBR, mesRotulo, quando, iniciais, chipStatus, classeStatus, hojeISO, debounce, autoAltura };
 })();

@@ -99,6 +99,23 @@ seu ambiente, está na seção final.
 - Título da aba muda por contexto (dashboard, cliente, gravação).
 - Rota inexistente não quebra a tela.
 
+### Verificado nos sistemas vNext
+
+| Teste | Resultado |
+|---|---|
+| Download PDF de um roteiro | ✅ arquivo A4 real (595×842 pt), 1 página, nome `MERCATO_SADIA_ROTEIRO_01_CASHBACK.pdf` |
+| Download PNG | ✅ 2382×3369 px, proporção 1.414 (A4 exata) |
+| Seleção múltipla no Download Center | ✅ contador de folhas, Todos/Nenhum, botão desabilitado sem seleção |
+| Quick View | ✅ abre, mostra miniatura da folha, fecha no ESC |
+| Estágio do roteiro | ✅ salva, persiste após reload e vira atividade |
+| Nota interna | ✅ salva e **não** aparece na folha A4 |
+| Fixados | ✅ grava no banco e cria a seção no dashboard |
+| Arquivar | ✅ sai da Central, aparece em Arquivados, desarquiva |
+| Lixeira | ✅ excluir manda para a lixeira; restaurar devolve com roteiros ligados |
+| Apresentação | ✅ abre limpa, navega, contador 01/02, ESC sai |
+| Atividade | ✅ timeline com eventos reais |
+| Regressões | ✅ suíte completa, logos, impressão, tema, workspace e produtividade |
+
 ## O que testar você mesmo depois de publicar
 
 Estes dependem do seu Supabase e da sua rede, então não dá para automatizar aqui.

@@ -198,6 +198,15 @@ B7.Editor = (function () {
     } else aplicar();
   }
 
+  async function fixarRoteiro(r) {
+    try {
+      await B7.Save.acao(() => B7.DB.fixar('roteiros', r.id, !r.is_pinned),
+        r.is_pinned ? 'Removido dos fixados' : 'Adicionado aos fixados');
+      r.is_pinned = !r.is_pinned;
+      renderEscrita(); renderTrilho();
+    } catch (e) {}
+  }
+
   /* ============================================ painel de escrita */
   function renderEscrita() {
     const cx = document.getElementById('escrita');
@@ -219,8 +228,12 @@ B7.Editor = (function () {
         '<button data-escala="1" title="Aumentar fonte">A+</button></div>' +
         '<button class="auto-bt' + (r.escala_automatica ? ' on' : '') + '" data-auto title="Ajusta a fonte sozinho">auto</button>' +
         '<div class="menu"><button class="ico">⋯</button><div class="lista">' +
+          '<button data-acao="baixar">Baixar roteiro</button>' +
+          '<button data-acao="espiar">Visualização rápida</button>' +
+          '<button data-acao="apresentar">Apresentar roteiros</button><hr>' +
           '<button data-acao="duplicar">Duplicar roteiro</button>' +
-          '<button data-acao="novo">Novo roteiro</button><hr>' +
+          '<button data-acao="novo">Novo roteiro</button>' +
+          '<button data-acao="fixar">' + (r.is_pinned ? 'Desafixar' : 'Fixar roteiro') + '</button><hr>' +
           '<button class="perigo" data-acao="excluir">Excluir roteiro</button>' +
         '</div></div>' +
       '</div><div class="bloco-corpo">' +
@@ -228,9 +241,18 @@ B7.Editor = (function () {
         '<input class="campo" data-campo="titulo" placeholder="Título do roteiro" value="' + esc(r.titulo) + '"></div>' +
         '<div class="mb"><label class="rot">OBJETIVO DO ROTEIRO</label>' +
         '<textarea class="campo cresce" data-campo="objetivo" rows="2" placeholder="O que esse vídeo precisa gerar">' + esc(r.objetivo) + '</textarea></div>' +
+        '<div class="mb"><label class="rot">ESTÁGIO DO ROTEIRO</label>' +
+        '<div class="opcoes" id="revisao">' + B7.UI.REVISAO.map(v =>
+          '<button data-rev="' + v + '"' + ((r.status || 'Em criação') === v ? ' class="on"' : '') + '>' +
+          v + '</button>').join('') + '</div></div>' +
         '<div class="mb"><label class="rot">OBSERVAÇÃO DE GRAVAÇÃO</label>' +
         '<textarea class="campo cresce" data-campo="observacao_gravacao" rows="2" placeholder="Ex: plano fechado, mais energia, pausa antes do CTA">' + esc(r.observacao_gravacao) + '</textarea>' +
         '<div class="ajuda">Não faz parte da fala. Sai na folha como nota de produção.</div></div>' +
+        '<div class="nota-b7"><label class="rot">NOTA INTERNA B7</label>' +
+        '<textarea class="campo cresce" data-campo="nota_interna" rows="2" ' +
+          'placeholder="Só a equipe vê. Ex: cliente pediu para evitar a palavra promoção.">' +
+          esc(r.nota_interna || '') + '</textarea>' +
+        '<div class="ajuda">Nunca entra no roteiro, na folha A4, no PDF nem no PNG.</div></div>' +
       '</div></div>' +
 
       '<div class="bloco"><div class="bloco-topo"><div class="rn">CENAS</div>' +
@@ -310,11 +332,31 @@ B7.Editor = (function () {
       renderEscrita(); renderPrevia();
     };
 
+    /* estágio do roteiro: salva na hora e vira atividade */
+    const rev = cx.querySelector('#revisao');
+    if (rev) rev.querySelectorAll('[data-rev]').forEach(b => b.onclick = async () => {
+      const v = b.dataset.rev;
+      rev.querySelectorAll('button').forEach(x => x.classList.remove('on'));
+      b.classList.add('on');
+      r.status = v;
+      try {
+        await B7.Save.acao(() => B7.DB.atualizarRoteiro(r.id, { status: v }), 'Estágio: ' + v);
+        B7.DB.registrar({ tipo: 'status', entidade: 'roteiro', id: r.id,
+          cliente: E.gravacao.client_id, gravacao: E.gravacao.id,
+          texto: (r.titulo || 'Roteiro sem título') + ' → ' + v });
+      } catch (e) {}
+      renderTrilho();
+    });
+
     /* menu do roteiro */
     cx.querySelectorAll('[data-acao]').forEach(b => b.onclick = () => {
       const a = b.dataset.acao;
       if (a === 'duplicar') duplicarRoteiro(r.id);
       if (a === 'novo') novoRoteiro();
+      if (a === 'baixar') baixar(r.id);
+      if (a === 'espiar') espiar(r);
+      if (a === 'apresentar') apresentar();
+      if (a === 'fixar') fixarRoteiro(r);
       if (a === 'excluir') excluirRoteiro(r.id);
     });
 
@@ -527,17 +569,29 @@ B7.Editor = (function () {
   }
   function zoomAjustar() { zoomManual = null; B7.pref.gravar('zoom', null); aplicarZoom(); }
 
-  /* =================================================== impressão */
-  function imprimir() {
-    B7.Impressao.abrirSelecao({
+  /* contexto único para impressão, download, quick view e apresentação */
+  function contexto() {
+    return {
       cliente: E.gravacao.cliente_nome,
       clienteLogo: E.gravacao.cliente_logo_url || null,
+      clienteId: E.gravacao.client_id,
       gravacao: E.gravacao.nome,
+      gravacaoId: E.gravacao.id,
       dataGravacao: E.gravacao.data_gravacao ? B7.UI.dataBR(E.gravacao.data_gravacao) : '',
       roteiros: E.roteiros,
       cenasPorRoteiro: E.cenas
-    });
+    };
   }
+
+  function baixar(roteiroId) { B7.Export.abrirCentral(contexto(), roteiroId); }
+  function espiar(roteiro) { B7.QuickView.abrir(contexto(), roteiro || E.roteiros.find(r => r.id === E.atual)); }
+  function apresentar() {
+    B7.Apresentar.abrir(contexto(), Math.max(0, E.roteiros.findIndex(r => r.id === E.atual)));
+  }
+
+  /* =================================================== impressão */
+  function imprimir() {
+    B7.Impressao.abrirSelecao(contexto()); }
 
   /* ============================================== dados da gravação */
   function editarGravacao() {
@@ -583,6 +637,7 @@ B7.Editor = (function () {
   });
 
   return { abrir, novoRoteiro, duplicarRoteiro, excluirRoteiro, imprimir, editarGravacao,
+           baixar, espiar, apresentar, contexto,
            menuStatus, modoFoco, zoom, zoomAjustar, aplicarZoom,
            get estado() { return E; } };
 })();

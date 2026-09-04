@@ -147,8 +147,68 @@ na hora) e dá um nome livre ("Conteúdos Setembro", "Campanha Cashback",
 "Institucionais"). A data é opcional — sem data, a folha impressa simplesmente
 não mostra campo de data. O editor abre já com o primeiro roteiro pronto.
 
+**Baixar roteiros** — botão *Baixar* no editor (ou `D`). Abre a central de
+exportação: escolhe PDF ou PNG, marca quais roteiros e se inclui a folha de
+abertura. O PDF sai em A4 real; o PNG sai em alta resolução (≈300 dpi). Os nomes
+saem prontos, tipo `MERCATO_SADIA_ROTEIRO_03_CASHBACK.pdf`. Mesmo com o sistema
+no modo escuro, o arquivo sai no layout claro de impressão.
+
+**Visualização rápida** (`V` no editor) — painel lateral com o resumo do roteiro
+e uma miniatura da folha, sem precisar abrir o editor inteiro.
+
+**Apresentar roteiros** — modo tela cheia para mostrar ao cliente: só a folha, o
+logo da B7 e a navegação. Nada de sidebar, botões administrativos ou notas
+internas. Setas navegam, ESC sai.
+
+**Estágio do roteiro** — Em criação, Em revisão, Aprovado internamente, Pronto
+para gravar e Gravado. Muda com um clique dentro do roteiro e fica registrado na
+atividade.
+
+**Nota interna B7** — campo dentro do roteiro para recado da equipe. **Nunca**
+entra na folha, no PDF, no PNG nem na impressão.
+
+**Arquivar e Lixeira** — arquivar tira a gravação da Central sem apagar nada.
+Excluir manda para a lixeira, também sem apagar: de lá dá para restaurar (com os
+roteiros e cenas intactos) ou excluir em definitivo, com confirmação forte.
+
+**Fixados** — clientes e gravações podem ser fixados; aparecem numa área própria
+no topo do dashboard.
+
+**Atividade recente** — linha do tempo com o que realmente aconteceu: criação,
+mudança de estágio, arquivamento, restauração e download.
+
 **Atalhos** — `Ctrl+K` abre as ações rápidas (nova gravação, novo cliente,
 buscar roteiro e as gravações recentes). A tecla `/` vai direto para a busca.
+
+**Baixar roteiros** — botão *Baixar* no editor (ou `D`). Abre a central de
+exportação: escolhe PDF ou PNG, marca quais roteiros e se inclui a folha de
+abertura. O PDF sai em A4 real; o PNG sai em alta resolução (≈300 dpi). Os nomes
+saem prontos, tipo `MERCATO_SADIA_ROTEIRO_03_CASHBACK.pdf`. Mesmo com o sistema
+no modo escuro, o arquivo sai no layout claro de impressão.
+
+**Visualização rápida** (`V` no editor) — painel lateral com o resumo do roteiro
+e uma miniatura da folha, sem precisar abrir o editor inteiro.
+
+**Apresentar roteiros** — modo tela cheia para mostrar ao cliente: só a folha, o
+logo da B7 e a navegação. Nada de sidebar, botões administrativos ou notas
+internas. Setas navegam, ESC sai.
+
+**Estágio do roteiro** — Em criação, Em revisão, Aprovado internamente, Pronto
+para gravar e Gravado. Muda com um clique dentro do roteiro e fica registrado na
+atividade.
+
+**Nota interna B7** — campo dentro do roteiro para recado da equipe. **Nunca**
+entra na folha, no PDF, no PNG nem na impressão.
+
+**Arquivar e Lixeira** — arquivar tira a gravação da Central sem apagar nada.
+Excluir manda para a lixeira, também sem apagar: de lá dá para restaurar (com os
+roteiros e cenas intactos) ou excluir em definitivo, com confirmação forte.
+
+**Fixados** — clientes e gravações podem ser fixados; aparecem numa área própria
+no topo do dashboard.
+
+**Atividade recente** — linha do tempo com o que realmente aconteceu: criação,
+mudança de estágio, arquivamento, restauração e download.
 
 **Atalhos** — `Ctrl K` ações rápidas · `/` busca · `N` nova gravação · `C` novo
 cliente · `F` modo foco · `P` imprimir · `Ctrl S` salvar agora · `?` lista de

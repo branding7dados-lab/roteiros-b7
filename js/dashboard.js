@@ -117,10 +117,12 @@ B7.Dashboard = (function () {
     marcarNav('#/');
     B7.Rota.titulo();
     esqueleto();
-    let resumo, recentes, clientes;
+    let resumo, recentes, clientes, fixados, atividades;
     try {
-      [resumo, recentes, clientes] = await Promise.all([
-        B7.DB.resumo(), B7.DB.gravacoesRecentes(7), B7.DB.listarClientes()
+      [resumo, recentes, clientes, fixados, atividades] = await Promise.all([
+        B7.DB.resumo(), B7.DB.gravacoesRecentes(7), B7.DB.listarClientes(),
+        B7.DB.fixados().catch(() => ({ gravacoes: [], clientes: [] })),
+        B7.DB.atividades(8).catch(() => [])
       ]);
     } catch (e) { return erro(e); }
 
@@ -138,6 +140,15 @@ B7.Dashboard = (function () {
         '</div>' +
         (destaque ? cardDestaque(destaque) : vazioGravacoes()) + '</div>' +
 
+        /* fixados só aparecem quando existe algo fixado */
+        ((fixados.gravacoes.length || fixados.clientes.length) ?
+          '<div class="secao"><div class="secao-topo"><h2>Fixados</h2>' +
+            '<span class="conta">' + (fixados.gravacoes.length + fixados.clientes.length) + '</span></div>' +
+            (fixados.gravacoes.length ? '<div class="grade">' + fixados.gravacoes.map(cardGravacao).join('') + '</div>' : '') +
+            (fixados.clientes.length ? '<div class="grade-clientes" style="margin-top:12px">' +
+              fixados.clientes.map(cardCliente).join('') + '</div>' : '') +
+          '</div>' : '') +
+
         (outras.length ? '<div class="secao"><div class="secao-topo"><h2>Gravações recentes</h2>' +
           '<span class="conta">' + outras.length + '</span></div>' +
           '<div class="grade">' + outras.map(cardGravacao).join('') + '</div></div>' : '') +
@@ -150,7 +161,9 @@ B7.Dashboard = (function () {
                             : vazioClientes()) +
         '</div>' +
 
-      '</div><div class="apoio">' + acoesRapidas(destaque) + institucional() + '</div></div></div>';
+      '</div><div class="apoio">' + acoesRapidas(destaque) +
+        '<div class="bloco"><h3>Atividade recente</h3>' + timeline(atividades) + '</div>' +
+        institucional() + '</div></div></div>';
 
     ligar();
   }
@@ -205,7 +218,12 @@ B7.Dashboard = (function () {
         '<div class="menu"><button class="ico" onclick="event.stopPropagation()">⋯</button>' +
           '<div class="lista"><button data-dup="' + esc(g.id) + '">Duplicar gravação</button>' +
           '<button data-imprimir="' + esc(g.id) + '">Imprimir</button>' +
-          '<button class="perigo" data-excluir="' + esc(g.id) + '">Excluir gravação</button></div></div>' +
+          '<button data-fixar-grav="' + esc(g.id) + '" data-fixado="' + (g.is_pinned ? '1' : '0') + '">' +
+            (g.is_pinned ? 'Desafixar' : 'Fixar') + '</button>' +
+          '<button data-arquivar="' + esc(g.id) + '" data-arq="' + (g.archived_at ? '1' : '0') + '">' +
+            (g.archived_at ? 'Desarquivar' : 'Arquivar') + '</button><hr>' +
+          '<button class="perigo" data-excluir="' + esc(g.id) + '" data-nome="' + esc(g.nome) + '">Excluir gravação</button>' +
+          '</div></div>' +
       '</div></div>';
   }
 
@@ -218,7 +236,12 @@ B7.Dashboard = (function () {
         '<div class="menu"><button class="ico" onclick="event.stopPropagation()">⋯</button>' +
           '<div class="lista"><button data-dup="' + esc(g.id) + '">Duplicar</button>' +
           '<button data-imprimir="' + esc(g.id) + '">Imprimir</button>' +
-          '<button class="perigo" data-excluir="' + esc(g.id) + '">Excluir</button></div></div>' +
+          '<button data-fixar-grav="' + esc(g.id) + '" data-fixado="' + (g.is_pinned ? '1' : '0') + '">' +
+            (g.is_pinned ? 'Desafixar' : 'Fixar') + '</button>' +
+          '<button data-arquivar="' + esc(g.id) + '" data-arq="' + (g.archived_at ? '1' : '0') + '">' +
+            (g.archived_at ? 'Desarquivar' : 'Arquivar') + '</button><hr>' +
+          '<button class="perigo" data-excluir="' + esc(g.id) + '" data-nome="' + esc(g.nome) + '">Excluir</button>' +
+          '</div></div>' +
         '<span class="abrir">Abrir →</span></div></div>';
   }
 
@@ -681,6 +704,133 @@ B7.Dashboard = (function () {
     const im = painel().querySelector('[data-importar]'); if (im) im.onclick = () => B7.Backup.importar();
   }
 
+
+  /* ============================ ARQUIVO, LIXEIRA, FIXADOS E ATIVIDADE */
+  async function arquivarGravacao(id, arquivar) {
+    try {
+      await B7.Save.acao(() => B7.DB.arquivar(id, arquivar));
+      B7.DB.registrar({ tipo: arquivar ? 'arquivar' : 'restaurar', entidade: 'gravacao', id: id,
+        texto: arquivar ? 'Gravação arquivada' : 'Gravação restaurada do arquivo' });
+      B7.UI.toast(arquivar ? 'Gravação arquivada' : 'Gravação restaurada', {
+        acao: 'Desfazer',
+        aoClicar: async () => {
+          await B7.Save.acao(() => B7.DB.arquivar(id, !arquivar));
+          B7.Rota.recarregar();
+        }
+      });
+      if (location.hash.startsWith('#/gravacao/')) location.hash = '#/';
+      else B7.Rota.recarregar();
+    } catch (e) {}
+  }
+
+  /* excluir agora manda para a lixeira; o registro continua no banco */
+  async function paraLixeira(tabela, id, rotulo) {
+    try {
+      await B7.Save.acao(() => B7.DB.paraLixeira(tabela, id));
+      B7.DB.registrar({ tipo: 'lixeira', entidade: tabela, id: id, texto: rotulo + ' movido para a lixeira' });
+      B7.UI.toast('Movido para a lixeira', {
+        acao: 'Desfazer',
+        aoClicar: async () => {
+          await B7.Save.acao(() => B7.DB.restaurar_(tabela, id), 'Restaurado');
+          B7.Rota.recarregar();
+        }
+      });
+      if (location.hash.startsWith('#/gravacao/')) location.hash = '#/';
+      else B7.Rota.recarregar();
+    } catch (e) {}
+  }
+
+  async function abrirLixeira() {
+    marcarNav('#/lixeira');
+    B7.Rota.titulo(['Lixeira']);
+    painel().innerHTML = '<div class="conteudo">' + carregando('Abrindo a lixeira…') + '</div>';
+    let dados;
+    try { dados = await B7.DB.lixeira(); } catch (e) { return erro(e, 'abrirLixeira'); }
+
+    const itens = []
+      .concat(dados.gravacoes.map(g => ({ tabela: 'gravacoes', id: g.id, nome: g.nome,
+        tipo: 'Gravação', cliente: g.cliente_nome, quando: g.deleted_at })))
+      .concat(dados.roteiros.map(r => ({ tabela: 'roteiros', id: r.id, nome: r.titulo || 'Sem título',
+        tipo: 'Roteiro', cliente: '', quando: r.deleted_at })))
+      .concat(dados.clientes.map(c => ({ tabela: 'clientes', id: c.id, nome: c.nome,
+        tipo: 'Cliente', cliente: '', quando: c.deleted_at })))
+      .sort((a, b) => String(b.quando).localeCompare(String(a.quando)));
+
+    painel().innerHTML = '<div class="conteudo entra">' +
+      '<div class="trilha-nav"><button data-ir="#/">Central B7</button><span>/</span><b>Lixeira</b></div>' +
+      '<div class="secao-topo"><h2 style="font-size:22px">Lixeira</h2>' +
+      '<span class="conta">' + itens.length + '</span></div>' +
+      '<p style="font-size:12.5px;color:var(--ink-3);margin-bottom:16px">' +
+      'Nada aqui foi apagado do banco. Restaure quando quiser — ou exclua em definitivo, ' +
+      'que aí não tem volta.</p>' +
+      (itens.length ? '<div class="lista-gravacoes">' + itens.map(i =>
+        '<div class="linha-gravacao" style="cursor:default">' +
+          '<span class="chip-status rascunho">' + i.tipo + '</span>' +
+          '<div class="nm"><b>' + esc(i.nome) + '</b><small>' +
+          (i.cliente ? esc(i.cliente) + ' · ' : '') + 'excluído ' + B7.UI.quando(i.quando) + '</small></div>' +
+          '<button class="b fina contorno" data-restaurar="' + esc(i.tabela) + ':' + esc(i.id) + '">Restaurar</button>' +
+          '<button class="b fina perigo" data-apagar="' + esc(i.tabela) + ':' + esc(i.id) + '" ' +
+            'data-nome="' + esc(i.nome) + '">Excluir</button>' +
+        '</div>').join('') + '</div>'
+        : estadoB7(IC.gravacoes, 'A lixeira está vazia.',
+                   'O que você excluir aparece aqui antes de sumir de vez.')) +
+      '</div>';
+
+    ligar();
+    painel().querySelectorAll('[data-restaurar]').forEach(b => b.onclick = async () => {
+      const [tabela, id] = b.dataset.restaurar.split(':');
+      try {
+        await B7.Save.acao(() => B7.DB.restaurar_(tabela, id), 'Restaurado');
+        B7.DB.registrar({ tipo: 'restaurar', entidade: tabela, id: id, texto: 'Restaurado da lixeira' });
+        abrirLixeira();
+      } catch (e) {}
+    });
+    painel().querySelectorAll('[data-apagar]').forEach(b => b.onclick = () => {
+      const [tabela, id] = b.dataset.apagar.split(':');
+      B7.UI.confirmar({
+        titulo: 'Excluir permanentemente?',
+        texto: '“' + b.dataset.nome + '” será apagado do banco junto com tudo que depende dele. ' +
+               'Esta ação não pode ser desfeita.',
+        rotulo: 'Excluir para sempre', perigo: true,
+        aoConfirmar: async () => {
+          try {
+            await B7.Save.acao(() => B7.DB.excluirDefinitivo(tabela, id), 'Excluído permanentemente');
+            abrirLixeira();
+          } catch (e) {}
+        }
+      });
+    });
+  }
+
+  async function abrirArquivados() {
+    marcarNav('#/arquivados');
+    B7.Rota.titulo(['Arquivados']);
+    painel().innerHTML = '<div class="conteudo">' + carregando('Abrindo os arquivados…') + '</div>';
+    let gravacoes;
+    try { gravacoes = await B7.DB.listarGravacoes(null, { somenteArquivadas: true }); }
+    catch (e) { return erro(e, 'abrirArquivados'); }
+
+    painel().innerHTML = '<div class="conteudo entra">' +
+      '<div class="trilha-nav"><button data-ir="#/">Central B7</button><span>/</span><b>Arquivados</b></div>' +
+      '<div class="secao-topo"><h2 style="font-size:22px">Arquivados</h2>' +
+      '<span class="conta">' + gravacoes.length + '</span></div>' +
+      (gravacoes.length ? '<div class="grade">' + gravacoes.map(cardGravacao).join('') + '</div>'
+        : estadoB7(IC.gravacoes, 'Nenhuma gravação arquivada.',
+                   'Arquive o que já saiu do ar para limpar a Central sem perder nada.')) +
+      '</div>';
+    ligar();
+  }
+
+  /* ------------------------------------------- atividade (timeline) */
+  function timeline(lista) {
+    if (!lista.length) return '<div class="vazio" style="padding:26px"><b>Nenhuma atividade recente.</b></div>';
+    const hora = iso => new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return '<div class="linha-tempo">' + lista.map(a =>
+      '<div class="tl-item"><div class="tl-pt"></div>' +
+        '<div class="tl-tx"><small>' + hora(a.created_at) + ' · ' + B7.UI.quando(a.created_at) + '</small>' +
+        '<b>' + esc(a.description || a.action_type) + '</b></div></div>').join('') + '</div>';
+  }
+
   /* ====================================================== interações */
   function marcarNav(rota) {
     document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('on', a.dataset.ir === rota));
@@ -711,7 +861,21 @@ B7.Dashboard = (function () {
       ev.stopPropagation(); modalNovoCliente();
     });
     p.querySelectorAll('[data-dup]').forEach(b => b.onclick = ev => { ev.stopPropagation(); duplicarGravacao(b.dataset.dup); });
-    p.querySelectorAll('[data-excluir]').forEach(b => b.onclick = ev => { ev.stopPropagation(); excluirGravacao(b.dataset.excluir); });
+    p.querySelectorAll('[data-excluir]').forEach(b => b.onclick = ev => {
+      ev.stopPropagation(); excluirGravacao(b.dataset.excluir, b.dataset.nome);
+    });
+    p.querySelectorAll('[data-arquivar]').forEach(b => b.onclick = ev => {
+      ev.stopPropagation(); arquivarGravacao(b.dataset.arquivar, b.dataset.arq !== '1');
+    });
+    p.querySelectorAll('[data-fixar-grav]').forEach(b => b.onclick = async ev => {
+      ev.stopPropagation();
+      const fixado = b.dataset.fixado === '1';
+      try {
+        await B7.Save.acao(() => B7.DB.fixar('gravacoes', b.dataset.fixarGrav, !fixado),
+          fixado ? 'Removido dos fixados' : 'Adicionado aos fixados');
+        B7.Rota.recarregar();
+      } catch (e) {}
+    });
     p.querySelectorAll('[data-abrir-cli]').forEach(b => b.onclick = ev => {
       ev.stopPropagation(); location.hash = '#/cliente/' + b.dataset.abrirCli;
     });
@@ -1024,6 +1188,8 @@ B7.Dashboard = (function () {
           data_gravacao: m.querySelector('#ng-data').value || null,
           status: 'Rascunho'
         }), 'Gravação criada');
+        B7.DB.registrar({ tipo: 'criar', entidade: 'gravacao', id: g.id, cliente: sel.value,
+          gravacao: g.id, texto: 'Nova gravação: ' + g.nome });
         m.fechar();
         location.hash = '#/gravacao/' + g.id;
       } catch (e) {}
@@ -1066,18 +1232,9 @@ B7.Dashboard = (function () {
     };
   }
 
-  function excluirGravacao(id) {
-    B7.UI.confirmar({
-      titulo: 'Excluir gravação?',
-      texto: 'Isso apaga também todos os roteiros e cenas dela. Não dá para desfazer.',
-      rotulo: 'Excluir', perigo: true,
-      aoConfirmar: async () => {
-        try {
-          await B7.Save.acao(() => B7.DB.excluirGravacao(id), 'Gravação excluída');
-          B7.Rota.recarregar();
-        } catch (e) {}
-      }
-    });
+  /* vai para a lixeira, não para o vazio */
+  function excluirGravacao(id, nome) {
+    paraLixeira('gravacoes', id, nome || 'Gravação');
   }
 
   /* ============================================== busca global */
@@ -1116,6 +1273,7 @@ B7.Dashboard = (function () {
   }, 240);
 
   return { abrir, abrirClientes, abrirCliente, abrirGravacoes, abrirRoteiros, abrirConfig,
+           abrirLixeira, abrirArquivados, arquivarGravacao, paraLixeira,
            modalNovaGravacao, modalNovoCliente, modalEditarCliente, excluirCliente,
            buscar, duplicarGravacao, excluirGravacao, IC,
            get ultima() { return ultimaGravacao; } };

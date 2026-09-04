@@ -45,7 +45,9 @@ B7.Rota = (function () {
       await B7.Dashboard.abrirCliente(partes[1]);
       return;
     }
-    if (partes[0] === 'config')    { mostrar('tela-dashboard'); return B7.Dashboard.abrirConfig(); }
+    if (partes[0] === 'config')     { mostrar('tela-dashboard'); return B7.Dashboard.abrirConfig(); }
+    if (partes[0] === 'lixeira')    { mostrar('tela-dashboard'); return B7.Dashboard.abrirLixeira(); }
+    if (partes[0] === 'arquivados') { mostrar('tela-dashboard'); return B7.Dashboard.abrirArquivados(); }
     if (partes[0] === 'clientes')  { mostrar('tela-dashboard'); return B7.Dashboard.abrirClientes(); }
     if (partes[0] === 'gravacoes') { mostrar('tela-dashboard'); return B7.Dashboard.abrirGravacoes(); }
     if (partes[0] === 'roteiros')  { mostrar('tela-dashboard'); return B7.Dashboard.abrirRoteiros(); }
@@ -107,6 +109,10 @@ B7.Rota = (function () {
     document.getElementById('bt-voltar').onclick = () => { location.hash = '#/'; };
     document.getElementById('ed-status').onclick = () => B7.Editor.menuStatus();
     document.getElementById('bt-imprimir').onclick = () => B7.Editor.imprimir();
+    document.getElementById('bt-baixar').onclick = () => B7.Editor.baixar();
+    document.getElementById('mn-ed-apresentar').onclick = () => B7.Editor.apresentar();
+    document.getElementById('mn-ed-arquivar').onclick = () =>
+      B7.Dashboard.arquivarGravacao(B7.Editor.estado.gravacao.id, true);
     document.getElementById('mn-ed-dados').onclick = () => B7.Editor.editarGravacao();
     document.getElementById('mn-ed-foco').onclick = () => B7.Editor.modoFoco();
     document.getElementById('bt-foco').onclick = () => B7.Editor.modoFoco();
@@ -241,6 +247,8 @@ B7.Rota = (function () {
       if (e.key === 'c' || e.key === 'C') { e.preventDefault(); B7.Dashboard.modalNovoCliente(); }
       if ((e.key === 'f' || e.key === 'F') && noEditor) { e.preventDefault(); B7.Editor.modoFoco(); }
       if ((e.key === 'p' || e.key === 'P') && noEditor) { e.preventDefault(); B7.Editor.imprimir(); }
+      if ((e.key === 'd' || e.key === 'D') && noEditor) { e.preventDefault(); B7.Editor.baixar(); }
+      if ((e.key === 'v' || e.key === 'V') && noEditor) { e.preventDefault(); B7.Editor.espiar(); }
     });
 
     B7.UI.ligarMenus(document);

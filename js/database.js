@@ -28,7 +28,7 @@ B7.DB = (function () {
   const api = {
     /* ---------------------------------------------------- CLIENTES */
     async listarClientes() {
-      return ok(await sb().from('clientes_resumo').select('*').order('nome'));
+      return ok(await sb().from('clientes_resumo').select('*').is('deleted_at', null).order('nome'));
     },
     async cliente(id) {
       return ok(await sb().from('clientes_resumo').select('*').eq('id', id).single());
@@ -77,14 +77,78 @@ B7.DB = (function () {
       if (error) console.warn('não consegui apagar a logo antiga:', error.message);
     },
 
+
+    /* ============================ FIXADOS, ARQUIVO E LIXEIRA ==========
+       Nada é apagado de verdade pelo botão de excluir: o registro ganha
+       deleted_at e sai das listas. A exclusão definitiva é outra ação. */
+    async fixar(tabela, id, fixado) {
+      return ok(await sb().from(tabela).update({ is_pinned: !!fixado }).eq('id', id).select());
+    },
+    async arquivar(id, arquivar) {
+      return ok(await sb().from('gravacoes')
+        .update({ archived_at: arquivar ? new Date().toISOString() : null }).eq('id', id).select());
+    },
+    async paraLixeira(tabela, id) {
+      return ok(await sb().from(tabela)
+        .update({ deleted_at: new Date().toISOString() }).eq('id', id).select());
+    },
+    async restaurar_(tabela, id) {
+      return ok(await sb().from(tabela).update({ deleted_at: null }).eq('id', id).select());
+    },
+    async excluirDefinitivo(tabela, id) {
+      return ok(await sb().from(tabela).delete().eq('id', id));
+    },
+    async lixeira() {
+      const [gravacoes, roteiros, clientes] = await Promise.all([
+        sb().from('gravacoes_resumo').select('*').not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+        sb().from('roteiros').select('id,titulo,recording_session_id,deleted_at')
+          .not('deleted_at', 'is', null).order('deleted_at', { ascending: false }),
+        sb().from('clientes_resumo').select('*').not('deleted_at', 'is', null)
+      ]);
+      for (const r of [gravacoes, roteiros, clientes]) if (r.error) throw r.error;
+      return { gravacoes: gravacoes.data || [], roteiros: roteiros.data || [], clientes: clientes.data || [] };
+    },
+
+    /* ==================================== ATIVIDADE ==================
+       Só eventos que interessam. Se o registro falhar, a ação principal
+       não pode quebrar por causa disso. */
+    async registrar(evento) {
+      try {
+        await sb().from('atividades').insert([{
+          action_type: evento.tipo, entity_type: evento.entidade,
+          entity_id: evento.id || null, client_id: evento.cliente || null,
+          recording_id: evento.gravacao || null, description: evento.texto || ''
+        }]);
+      } catch (e) { console.warn('atividade não registrada:', e.message); }
+    },
+    async atividades(limite = 10, clienteId) {
+      let q = sb().from('atividades').select('*');
+      if (clienteId) q = q.eq('client_id', clienteId);
+      return ok(await q.order('created_at', { ascending: false }).limit(limite));
+    },
+
+    /* ==================================== FIXADOS ==================== */
+    async fixados() {
+      const [gravacoes, clientes] = await Promise.all([
+        sb().from('gravacoes_resumo').select('*').eq('is_pinned', true).is('deleted_at', null),
+        sb().from('clientes_resumo').select('*').eq('is_pinned', true).is('deleted_at', null)
+      ]);
+      for (const r of [gravacoes, clientes]) if (r.error) throw r.error;
+      return { gravacoes: gravacoes.data || [], clientes: clientes.data || [] };
+    },
+
     /* --------------------------------------------------- GRAVAÇÕES */
-    async listarGravacoes(clienteId) {
-      let q = sb().from('gravacoes_resumo').select('*');
+    async listarGravacoes(clienteId, opcoes = {}) {
+      let q = sb().from('gravacoes_resumo').select('*').is('deleted_at', null);
+      if (!opcoes.comArquivadas) q = q.is('archived_at', null);
+      if (opcoes.somenteArquivadas) q = sb().from('gravacoes_resumo').select('*')
+        .is('deleted_at', null).not('archived_at', 'is', null);
       if (clienteId) q = q.eq('client_id', clienteId);
       return ok(await q.order('updated_at', { ascending: false }));
     },
     async gravacoesRecentes(limite = 6) {
       return ok(await sb().from('gravacoes_resumo').select('*')
+        .is('deleted_at', null).is('archived_at', null)
         .order('updated_at', { ascending: false }).limit(limite));
     },
     async gravacao(id) {
@@ -104,7 +168,7 @@ B7.DB = (function () {
     /* ---------------------------------------------------- ROTEIROS */
     async listarRoteiros(gravacaoId) {
       return ok(await sb().from('roteiros').select('*')
-        .eq('recording_session_id', gravacaoId).order('position'));
+        .eq('recording_session_id', gravacaoId).is('deleted_at', null).order('position'));
     },
     async criarRoteiro(dados) {
       const linhas = ok(await sb().from('roteiros').insert([dados]).select());
