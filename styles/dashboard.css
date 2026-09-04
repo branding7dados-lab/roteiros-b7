@@ -1,0 +1,93 @@
+/* =====================================================================
+   Dashboard, busca global e área de clientes
+   ===================================================================== */
+
+.painel{flex:1;min-height:0;overflow-y:auto;}
+.conteudo{max-width:1180px;margin:0 auto;padding:28px 26px 90px;}
+
+/* busca no topo */
+.busca-topo{position:relative;flex:1;max-width:440px;}
+.busca-topo input{width:100%;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+  color:#fff;border-radius:10px;padding:10px 12px 10px 36px;font-size:13px;transition:var(--t);}
+.busca-topo input::placeholder{color:rgba(255,255,255,.38);}
+.busca-topo input:focus{outline:none;border-color:rgba(226,63,158,.7);background:rgba(255,255,255,.12);}
+.busca-topo svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:15px;height:15px;
+  stroke:rgba(255,255,255,.45);fill:none;stroke-width:2;}
+.resultados{position:absolute;left:0;right:0;top:calc(100% + 8px);background:#fff;border-radius:14px;
+  box-shadow:0 18px 50px rgba(20,8,40,.26);padding:8px;max-height:60vh;overflow-y:auto;display:none;z-index:80;}
+.resultados.aberto{display:block;}
+.resultados .grupo{font-size:9.5px;font-weight:700;letter-spacing:.18em;color:#B5AECA;padding:10px 10px 6px;}
+.resultados .res{display:flex;align-items:center;gap:11px;padding:10px;border-radius:9px;cursor:pointer;transition:var(--t);}
+.resultados .res:hover{background:var(--soft);}
+.resultados .res .mini{width:30px;height:30px;border-radius:9px;background:var(--lilac);color:var(--purple);
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex:none;}
+.resultados .res b{display:block;font-size:13.5px;font-weight:600;}
+.resultados .res small{font-size:11.5px;color:var(--grey);}
+.resultados .nada{padding:22px;text-align:center;font-size:13px;color:var(--grey);}
+
+/* títulos de seção */
+.secao{margin-bottom:30px;}
+.secao-topo{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.secao-topo h2{font-family:'Archivo';font-size:15px;font-weight:800;letter-spacing:-.01em;}
+.secao-topo .conta{font-size:12px;color:var(--grey);}
+.secao-topo .espaco{flex:1;}
+
+/* resumo */
+.resumo{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:30px;}
+.metrica{background:var(--card);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--sh-1);
+  transition:var(--t);}
+.metrica:hover{box-shadow:var(--sh-2);}
+.metrica b{display:block;font-family:'Archivo';font-size:26px;font-weight:800;letter-spacing:-.02em;line-height:1.1;}
+.metrica small{display:block;font-size:11px;font-weight:600;letter-spacing:.12em;color:#A79FBD;margin-top:5px;}
+.metrica.destaque b{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;}
+
+/* cards de diária */
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(268px,1fr));gap:12px;}
+.card-diaria{background:var(--card);border-radius:var(--r-lg);padding:16px;box-shadow:var(--sh-1);
+  cursor:pointer;transition:var(--t);position:relative;overflow:hidden;}
+.card-diaria:hover{box-shadow:var(--sh-2);transform:translateY(-2px);}
+.card-diaria:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--grad);
+  opacity:0;transition:var(--t);}
+.card-diaria:hover:before{opacity:1;}
+.card-diaria .cli{font-size:10.5px;font-weight:700;letter-spacing:.16em;color:var(--purple);
+  text-transform:uppercase;margin-bottom:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.card-diaria h3{font-family:'Archivo';font-size:15.5px;font-weight:800;letter-spacing:-.01em;line-height:1.25;
+  margin-bottom:10px;}
+.card-diaria .meta{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--grey);margin-bottom:12px;}
+.card-diaria .meta .p{width:3px;height:3px;border-radius:50%;background:#CFC7E0;}
+.card-diaria .rodape{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.card-diaria .quando{font-size:11px;color:#AEA6C4;}
+
+/* clientes */
+.lista-clientes{display:flex;flex-direction:column;gap:9px;}
+.card-cliente{display:flex;align-items:center;gap:14px;background:var(--card);border-radius:var(--r-lg);
+  padding:14px 16px;box-shadow:var(--sh-1);cursor:pointer;transition:var(--t);}
+.card-cliente:hover{box-shadow:var(--sh-2);transform:translateX(3px);}
+.avatar{width:42px;height:42px;border-radius:13px;background:var(--grad);color:#fff;display:flex;
+  align-items:center;justify-content:center;font-family:'Archivo';font-weight:800;font-size:15px;flex:none;}
+.card-cliente .nm{flex:1;min-width:0;}
+.card-cliente .nm b{display:block;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.card-cliente .nm small{font-size:12px;color:var(--grey);}
+.card-cliente .seta{color:#C6BEDA;font-size:18px;}
+
+/* detalhe do cliente: diárias por mês */
+.voltar{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600;color:var(--grey);
+  padding:8px 12px 8px 8px;border-radius:9px;margin-bottom:16px;transition:var(--t);}
+.voltar:hover{background:var(--soft);color:var(--magenta);}
+.cabeca-cliente{display:flex;align-items:center;gap:16px;margin-bottom:26px;}
+.cabeca-cliente .avatar{width:56px;height:56px;border-radius:17px;font-size:19px;}
+.cabeca-cliente h1{font-family:'Archivo';font-size:24px;font-weight:900;letter-spacing:-.02em;}
+.cabeca-cliente small{font-size:13px;color:var(--grey);}
+.mes-rot{font-family:'Archivo';font-size:11px;font-weight:800;letter-spacing:.2em;color:var(--violet);
+  text-transform:uppercase;margin:22px 0 11px;}
+.linha-diaria{display:flex;align-items:center;gap:14px;background:var(--card);border-radius:var(--r);
+  padding:13px 15px;box-shadow:var(--sh-1);margin-bottom:8px;cursor:pointer;transition:var(--t);}
+.linha-diaria:hover{box-shadow:var(--sh-2);transform:translateX(3px);}
+.linha-diaria .dia{font-family:'Archivo';font-size:15px;font-weight:800;color:var(--magenta);
+  min-width:52px;flex:none;}
+.linha-diaria .nm{flex:1;min-width:0;}
+.linha-diaria .nm b{display:block;font-size:14px;font-weight:600;}
+.linha-diaria .nm small{font-size:12px;color:var(--grey);}
+
+@media (max-width:1000px){ .resumo{grid-template-columns:repeat(2,1fr);} }
+@media (max-width:620px){ .conteudo{padding:20px 14px 80px;} .grade{grid-template-columns:1fr;} }

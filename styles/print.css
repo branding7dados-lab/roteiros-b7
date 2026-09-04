@@ -1,0 +1,158 @@
+/* =====================================================================
+   FICHA DE GRAVAÇÃO A4 — layout aprovado. Vale para a prévia e para a
+   impressão. Alterar aqui muda o papel; pense duas vezes.
+   ===================================================================== */
+
+.folha{--fs:1;width:210mm;height:297mm;min-height:297mm;max-height:297mm;position:relative;
+  overflow:hidden;background:#fff;box-shadow:0 8px 40px rgba(28,16,48,.14);margin-bottom:26px;
+  display:flex;flex-direction:column;padding:16mm 18mm;}
+.folha:last-child{margin-bottom:0;}
+.folha p,.folha h2,.folha .obj-txt,.folha .cena-dir,.folha .proj span,.folha .sug-txt{
+  overflow-wrap:break-word;word-break:break-word;min-width:0;}
+.folha .titulo-dir,.folha .obj,.folha .cena-bloco{min-width:0;}
+
+.faixa-topo{position:absolute;left:0;top:0;width:100%;height:4mm;background:var(--grad);}
+
+.folha-cabeca{display:flex;justify-content:space-between;align-items:center;padding-bottom:8px;
+  border-bottom:1px solid var(--line);}
+.folha-cabeca .esq{display:flex;align-items:center;gap:9px;}
+.folha-cabeca .esq img{height:9mm;}
+.folha-cabeca .esq span{font-size:8px;font-weight:700;letter-spacing:.28em;color:var(--ink);}
+.folha-cabeca .dir{font-size:8px;font-weight:600;letter-spacing:.28em;color:var(--grey);}
+
+.proj{display:flex;margin-top:calc(7mm * var(--fs));border-bottom:1px solid var(--line);padding-bottom:9px;}
+.proj .cel{flex:1;display:flex;flex-direction:column;gap:5px;padding-right:16px;min-width:0;}
+.proj .cel+.cel{padding-left:16px;border-left:1px solid var(--line);}
+.proj .cel.fim{flex:0 0 30mm;}
+.proj b{font-size:7.5px;font-weight:700;letter-spacing:.28em;color:var(--grey);}
+.proj span{font-family:'Archivo';font-weight:700;font-size:calc(12px * var(--fs));color:var(--ink);}
+.proj .fraco{color:#C9C2DA;}
+
+.titulo-bloco{display:flex;gap:calc(28px * var(--fs));align-items:flex-start;margin-top:calc(9mm * var(--fs));}
+.numero{font-family:'Archivo';font-weight:900;font-size:calc(96px * var(--fs));line-height:.76;
+  letter-spacing:-.045em;color:transparent;-webkit-text-stroke:2.2px var(--magenta);flex:none;}
+.titulo-dir{padding-top:5px;border-left:1px solid var(--line);padding-left:calc(28px * var(--fs));flex:1;}
+.kicker{display:flex;align-items:center;gap:8px;font-size:calc(9px * var(--fs));font-weight:700;
+  letter-spacing:.32em;color:var(--grey);margin-bottom:9px;}
+.kicker i{display:block;width:6px;height:6px;border-radius:50%;background:var(--magenta);flex:none;}
+.folha h2{font-family:'Archivo';font-weight:900;font-size:calc(26px * var(--fs));line-height:1.1;
+  letter-spacing:-.015em;color:var(--ink);text-transform:uppercase;}
+.folha h2.fraco{color:#C9C2DA;}
+.risco-titulo{width:46px;height:4px;background:var(--grad);margin-top:calc(11px * var(--fs));}
+
+.obj{display:flex;gap:12px;align-items:flex-start;margin-top:calc(11px * var(--fs));
+  background:var(--lilac);border-left:3px solid var(--violet);padding:calc(10px * var(--fs)) 14px;}
+.obj b{font-size:calc(7.5px * var(--fs));font-weight:800;letter-spacing:.26em;color:var(--violet);
+  flex:none;padding-top:3px;}
+.obj .obj-txt{font-size:calc(11.6px * var(--fs));line-height:1.55;color:var(--ink-2);font-weight:500;flex:1;}
+
+.nota-grav{display:flex;gap:12px;align-items:flex-start;margin-top:calc(8px * var(--fs));
+  border:1.2px dashed #D6CEE8;padding:calc(9px * var(--fs)) 14px;}
+.nota-grav b{font-size:calc(7.5px * var(--fs));font-weight:800;letter-spacing:.22em;color:var(--grey);
+  flex:none;padding-top:2px;}
+.nota-grav .obj-txt{font-size:calc(11px * var(--fs));line-height:1.5;color:var(--ink-2);flex:1;}
+
+.folha-corpo{flex:1;display:flex;flex-direction:column;}
+.esp{flex:1;min-height:calc(6mm * var(--fs));max-height:calc(24mm * var(--fs));}
+.esp.fim{flex:.45;min-height:calc(3mm * var(--fs));}
+
+.cena-cabeca{display:flex;align-items:center;gap:11px;margin-bottom:calc(4.6mm * var(--fs));}
+.cena-num{font-family:'Archivo';font-weight:800;font-size:calc(8.5px * var(--fs));letter-spacing:.22em;
+  background:var(--ink);color:#fff;padding:5px 10px 4px;flex:none;}
+.cena-dir{font-size:calc(8.5px * var(--fs));font-weight:700;letter-spacing:.28em;color:var(--grey);flex:none;}
+.cena-linha{flex:1;height:1px;background:var(--line);}
+.etiqueta{font-size:calc(8.5px * var(--fs));font-weight:800;letter-spacing:.26em;color:#fff;
+  background:var(--magenta);padding:5px 11px 4px;flex:none;}
+.etiqueta.e-Narrativa{background:var(--ink);}
+.etiqueta.e-Narração{background:var(--violet);}
+
+.bl-gancho{position:relative;background:var(--grad);color:#fff;overflow:hidden;
+  padding:calc(24px * var(--fs)) calc(30px * var(--fs)) calc(26px * var(--fs)) calc(32px * var(--fs));}
+.bl-gancho:before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:rgba(255,255,255,.9);}
+.bl-gancho .aspas{position:absolute;right:16px;top:-16px;font-family:'Archivo';font-weight:900;
+  font-size:calc(112px * var(--fs));color:rgba(255,255,255,.15);line-height:1;}
+.bl-gancho .txt{position:relative;z-index:2;}
+.bl-gancho p{font-family:'Archivo';font-weight:700;font-size:calc(21.5px * var(--fs));line-height:1.45;}
+
+.bl-narrativa p{font-size:calc(14.2px * var(--fs));line-height:1.9;color:var(--ink-2);
+  margin-bottom:calc(16px * var(--fs));position:relative;padding-left:16px;}
+.bl-narrativa p:before{content:"";position:absolute;left:0;top:calc(11px * var(--fs));width:7px;height:1.5px;
+  background:var(--line);}
+.bl-narrativa p:last-child{margin-bottom:0;}
+
+.bl-narracao{background:var(--lilac);border-left:4px solid var(--violet);
+  padding:calc(16px * var(--fs)) calc(20px * var(--fs));}
+.bl-narracao p{font-size:calc(14px * var(--fs));line-height:1.85;color:var(--ink-2);
+  margin-bottom:calc(12px * var(--fs));}
+.bl-narracao p:last-child{margin-bottom:0;}
+.sug{margin-top:calc(9px * var(--fs));border:1.2px dashed #B9A9D6;background:#fff;
+  padding:calc(12px * var(--fs)) calc(16px * var(--fs));display:flex;gap:12px;align-items:flex-start;}
+.sug b{font-size:calc(7.5px * var(--fs));font-weight:800;letter-spacing:.24em;color:var(--violet);
+  flex:none;padding-top:2px;}
+.sug .sug-txt{flex:1;}
+.sug p{font-size:calc(11.6px * var(--fs));line-height:1.6;color:var(--ink-2);margin-bottom:4px;
+  font-weight:500;position:relative;padding-left:13px;}
+.sug p:before{content:"";position:absolute;left:0;top:calc(7px * var(--fs));width:5px;height:5px;
+  border-radius:50%;background:#B9A9D6;}
+.sug p:last-child{margin-bottom:0;}
+
+.bl-cta{background:var(--tint);border:1.5px solid var(--magenta);
+  padding:calc(20px * var(--fs)) calc(26px * var(--fs)) calc(22px * var(--fs));}
+.bl-cta p{font-family:'Archivo';font-weight:700;font-size:calc(16.5px * var(--fs));line-height:1.55;color:var(--ink);}
+
+.takes{margin-top:calc(8mm * var(--fs));display:flex;align-items:center;gap:18px;padding-top:14px;}
+.takes .tk{display:flex;align-items:center;gap:6px;font-size:7.5px;font-weight:700;letter-spacing:.22em;color:var(--grey);}
+.takes .bx{width:9px;height:9px;border:1px solid var(--line);display:block;}
+.takes .sp{flex:1;height:1px;background:var(--line);}
+.folha-pe{display:flex;justify-content:space-between;align-items:center;margin-top:12px;
+  border-top:1px solid var(--line);padding-top:8px;}
+.folha-pe .esq{font-size:7.5px;font-weight:600;letter-spacing:.26em;color:var(--grey);}
+.folha-pe .dir{font-family:'Archivo';font-weight:800;font-size:11px;color:var(--magenta);}
+
+.aviso-overflow{position:absolute;left:0;right:0;bottom:5mm;text-align:center;font-size:10px;
+  font-weight:700;letter-spacing:.12em;color:var(--erro);display:none;}
+.folha.estourou .aviso-overflow{display:block;}
+.folha.estourou{box-shadow:0 0 0 2px var(--erro), 0 8px 40px rgba(28,16,48,.14);}
+
+/* ------------------------------------------------- página de abertura */
+.folha.abertura{background:#0B0512;color:#fff;padding:22mm 20mm 18mm;justify-content:space-between;}
+.folha.abertura .brilho{position:absolute;right:-40mm;top:30mm;width:150mm;height:150mm;border-radius:50%;
+  background:radial-gradient(circle,rgba(194,28,131,.4) 0%,rgba(110,30,134,.2) 45%,transparent 70%);}
+.folha.abertura .marca{width:46mm;position:relative;z-index:2;}
+.folha.abertura .miolo{position:relative;z-index:2;}
+.folha.abertura .olho{display:inline-flex;align-items:center;gap:9px;font-size:9.5px;font-weight:700;
+  letter-spacing:.34em;color:#E86BB8;margin-bottom:14px;}
+.folha.abertura .olho i{display:block;width:22px;height:2px;background:var(--magenta);}
+.folha.abertura h1{font-family:'Archivo';font-weight:900;font-size:52px;line-height:.96;
+  letter-spacing:-.025em;text-transform:uppercase;}
+.folha.abertura .dados{display:flex;gap:0;margin-top:26px;border-top:1px solid rgba(255,255,255,.16);
+  position:relative;z-index:2;}
+.folha.abertura .dados .cel{flex:1;padding:14px 16px 0 0;}
+.folha.abertura .dados .cel+.cel{padding-left:16px;border-left:1px solid rgba(255,255,255,.16);}
+.folha.abertura .dados b{display:block;font-size:8px;font-weight:700;letter-spacing:.3em;
+  color:rgba(255,255,255,.5);margin-bottom:7px;}
+.folha.abertura .dados span{font-family:'Archivo';font-weight:700;font-size:14px;}
+.folha.abertura .indice{position:relative;z-index:2;margin-top:22px;}
+.folha.abertura .indice .rot{font-size:8px;font-weight:700;letter-spacing:.3em;
+  color:rgba(255,255,255,.45);margin-bottom:12px;}
+.folha.abertura .indice .it{display:flex;gap:12px;align-items:baseline;padding:7px 0;
+  border-bottom:1px solid rgba(255,255,255,.09);}
+.folha.abertura .indice .it b{font-family:'Archivo';font-weight:800;font-size:12px;color:var(--magenta);flex:none;}
+.folha.abertura .indice .it span{font-size:12.5px;color:rgba(255,255,255,.86);}
+
+/* ===================================================================
+   IMPRESSÃO
+   =================================================================== */
+#area-impressao{display:none;}
+
+@media print{
+  html,body{height:auto;overflow:visible;background:#fff;}
+  #app,#toasts,.fundo-modal,.zoom,#setup{display:none !important;}
+  #area-impressao{display:block !important;}
+  #area-impressao .folha{box-shadow:none !important;margin:0 !important;
+    page-break-after:always;break-after:page;}
+  #area-impressao .folha:last-child{page-break-after:auto;break-after:auto;}
+  .folha.estourou{box-shadow:none !important;}
+  .aviso-overflow{display:none !important;}
+  @page{size:A4 portrait;margin:0;}
+}
